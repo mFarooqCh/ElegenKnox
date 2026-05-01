@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">ElegenKnox</string>
+    <string name="lock_hint">Enter the code to unlock the phone</string>
+    <string name="lock_unlock">Unlock</string>
+    <string name="lock_success">Unlocked</string>
+    <string name="lock_error">Incorrect code</string>
+    <string name="lock_empty">Empty input</string>
 </resources>
