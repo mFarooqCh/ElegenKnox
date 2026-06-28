@@ -13,13 +13,15 @@
         android:layout_height="56dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingHorizontal="4dp">
+        android:paddingStart="4dp"
+        android:paddingEnd="8dp">
 
         <ImageButton
             android:id="@+id/dialog_back_btn"
             android:layout_width="44dp"
             android:layout_height="44dp"
             android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="10dp"
             android:src="@drawable/ic_arrow_back"
             android:contentDescription="Close"
             app:tint="#111827" />
@@ -31,25 +33,23 @@
             android:layout_weight="1"
             android:text="Add Cash In Entry"
             android:textColor="#2563EB"
-            android:textSize="18sp"
+            android:textSize="17sp"
             android:textStyle="bold"
             android:layout_marginStart="4dp" />
 
         <ImageButton
             android:id="@+id/dialog_settings_btn"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="8dp"
             android:src="@android:drawable/ic_menu_preferences"
             android:contentDescription="Settings"
             app:tint="#2563EB" />
 
     </LinearLayout>
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="#E5E7EB" />
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E5E7EB" />
 
     <!-- ── Date & Time row ── -->
     <LinearLayout
@@ -57,22 +57,24 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="12dp">
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp">
 
         <!-- Date picker -->
         <LinearLayout
             android:id="@+id/btn_pick_date"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:background="?attr/selectableItemBackground">
+            android:background="?attr/selectableItemBackground"
+            android:paddingEnd="16dp">
 
             <ImageView
-                android:layout_width="18dp"
-                android:layout_height="18dp"
+                android:layout_width="17dp"
+                android:layout_height="17dp"
                 android:src="@android:drawable/ic_menu_today"
                 android:contentDescription="Date"
                 app:tint="#374151" />
@@ -87,9 +89,9 @@
                 android:textSize="14sp" />
 
             <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:layout_marginStart="4dp"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:layout_marginStart="3dp"
                 android:src="@android:drawable/arrow_down_float"
                 android:contentDescription=""
                 app:tint="#6B7280" />
@@ -98,16 +100,15 @@
         <!-- Time picker -->
         <LinearLayout
             android:id="@+id/btn_pick_time"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:background="?attr/selectableItemBackground">
 
             <ImageView
-                android:layout_width="18dp"
-                android:layout_height="18dp"
+                android:layout_width="17dp"
+                android:layout_height="17dp"
                 android:src="@android:drawable/ic_menu_recent_history"
                 android:contentDescription="Time"
                 app:tint="#374151" />
@@ -122,9 +123,9 @@
                 android:textSize="14sp" />
 
             <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:layout_marginStart="4dp"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:layout_marginStart="3dp"
                 android:src="@android:drawable/arrow_down_float"
                 android:contentDescription=""
                 app:tint="#6B7280" />
@@ -132,10 +133,7 @@
 
     </LinearLayout>
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="#E5E7EB" />
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E5E7EB" />
 
     <!-- ── Amount field ── -->
     <com.google.android.material.textfield.TextInputLayout
@@ -143,13 +141,13 @@
         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="16dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
         android:layout_marginTop="20dp"
-        android:hint="Amount"
+        android:hint="Amount *"
         app:hintTextColor="#DC2626"
         app:boxStrokeColor="#2563EB"
-        app:boxStrokeWidth="2dp"
-        app:counterEnabled="false">
+        app:boxStrokeWidth="2dp">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_amount"
@@ -160,13 +158,14 @@
             android:textSize="16sp" />
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- ── Remark field (optional, shown after amount) ── -->
+    <!-- ── Remark field ── -->
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/layout_remark"
         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginHorizontal="16dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
         android:layout_marginTop="12dp"
         android:hint="Remark (optional)"
         app:boxStrokeColor="#D1D5DB"
@@ -181,13 +180,14 @@
             android:textSize="16sp" />
     </com.google.android.material.textfield.TextInputLayout>
 
-    <!-- ── Bottom buttons ── -->
+    <!-- ── Save / Save & Add New buttons ── -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="28dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="24dp"
         android:layout_marginBottom="24dp">
 
         <com.google.android.material.button.MaterialButton
@@ -199,8 +199,8 @@
             android:layout_marginEnd="10dp"
             android:text="SAVE &amp; ADD NEW"
             android:textAllCaps="true"
-            android:textSize="13sp"
-            android:textColor="#111827"
+            android:textSize="12sp"
+            android:textColor="#374151"
             app:strokeColor="#D1D5DB"
             app:cornerRadius="6dp" />
 

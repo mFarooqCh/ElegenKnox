@@ -1,92 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#F8FAFC"
+    android:fitsSystemWindows="false"
     tools:context=".MainActivity">
 
-    <com.google.android.material.appbar.MaterialToolbar
+    <!-- ═══════════════════════════════════════════
+         TOP APP BAR  — sits below status bar
+    ═══════════════════════════════════════════ -->
+    <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/top_app_bar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:background="#FFFFFF"
-        android:elevation="2dp"
+        app:elevation="2dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <androidx.constraintlayout.widget.ConstraintLayout
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingTop="8dp"
-            android:paddingEnd="8dp"
-            android:paddingBottom="12dp">
+            android:layout_height="56dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="8dp">
 
+            <!-- Business name + subtitle -->
             <LinearLayout
                 android:id="@+id/business_selector"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
                 android:clickable="true"
                 android:focusable="true"
-                android:orientation="vertical"
-                android:paddingEnd="12dp"
-                app:layout_constraintEnd_toStartOf="@id/invite_button"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent">
+                android:background="?attr/selectableItemBackground">
 
                 <TextView
                     android:id="@+id/business_title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Studio House"
+                    android:text="Ghosia Hotel"
                     android:textColor="#111827"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
 
                 <TextView
                     android:id="@+id/business_subtitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
                     android:text="Tap to switch business"
-                    android:textColor="#4B5563"
-                    android:textSize="13sp" />
+                    android:textColor="#6B7280"
+                    android:textSize="12sp" />
             </LinearLayout>
 
-            <ImageButton
-                android:id="@+id/invite_button"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Invite"
-                android:src="@android:drawable/ic_menu_share"
-                app:layout_constraintEnd_toStartOf="@id/business_drop_icon"
-                app:layout_constraintTop_toTopOf="parent"
-                app:tint="#2563EB" />
+        </LinearLayout>
 
-            <ImageView
-                android:id="@+id/business_drop_icon"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:src="@android:drawable/arrow_down_float"
-                app:layout_constraintBottom_toBottomOf="@id/business_selector"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="@id/business_selector"
-                app:tint="#4B5563" />
-        </androidx.constraintlayout.widget.ConstraintLayout>
-    </com.google.android.material.appbar.MaterialToolbar>
+    </com.google.android.material.appbar.AppBarLayout>
 
+    <!-- ═══════════════════════════════════════════
+         SCROLLABLE BODY
+    ═══════════════════════════════════════════ -->
     <ScrollView
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:clipToPadding="false"
         android:paddingHorizontal="20dp"
         android:paddingTop="16dp"
-        android:paddingBottom="96dp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        android:paddingBottom="16dp"
+        android:scrollbars="none"
+        app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/top_app_bar">
@@ -96,6 +87,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
+            <!-- Blue hero card -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -127,7 +119,8 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Basics of CashBook"
+                        android:layout_marginTop="12dp"
+                        android:text="Elegen CashBook"
                         android:textColor="#FFFFFF"
                         android:textSize="18sp"
                         android:textStyle="bold" />
@@ -142,6 +135,7 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- Section header -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -151,6 +145,7 @@
                 android:textSize="20sp"
                 android:textStyle="bold" />
 
+            <!-- Tip card -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -168,32 +163,29 @@
                     android:textSize="14sp" />
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- Books RecyclerView -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/books_list"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 android:nestedScrollingEnabled="false" />
+
+            <!-- Bottom spacing so FAB never overlaps last item -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="80dp" />
+
         </LinearLayout>
     </ScrollView>
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/add_book_button"
-        android:layout_width="wrap_content"
-        android:layout_height="56dp"
-        android:layout_marginEnd="20dp"
-        android:layout_marginBottom="92dp"
-        android:paddingHorizontal="20dp"
-        android:text="Add New Book"
-        android:textAllCaps="false"
-        app:cornerRadius="28dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
+    <!-- ═══════════════════════════════════════════
+         BOTTOM NAVIGATION  — sits above nav bar
+    ═══════════════════════════════════════════ -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottom_navigation"
         android:layout_width="0dp"
-        android:layout_height="72dp"
+        android:layout_height="wrap_content"
         android:background="#FFFFFF"
         app:itemIconTint="#2563EB"
         app:itemTextColor="#111827"
@@ -202,4 +194,21 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:menu="@menu/bottom_nav_menu" />
+
+    <!-- ═══════════════════════════════════════════
+         FAB — Add New Book
+    ═══════════════════════════════════════════ -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/add_book_button"
+        android:layout_width="wrap_content"
+        android:layout_height="56dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="12dp"
+        android:paddingHorizontal="20dp"
+        android:text="Add New Book"
+        android:textAllCaps="false"
+        app:cornerRadius="28dp"
+        app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
+        app:layout_constraintEnd_toEndOf="parent" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

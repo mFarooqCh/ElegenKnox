@@ -11,15 +11,16 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.chip.Chip
 import com.google.android.material.textfield.TextInputEditText
+import androidx.activity.enableEdgeToEdge
 
 class MainActivity : AppCompatActivity() {
 
@@ -52,10 +53,18 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
+        val rootView = findViewById<View>(R.id.main)
+        ViewCompat.setOnApplyWindowInsetsListener(rootView) { view, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.setPadding(0, bars.top, 0, bars.bottom)
+            insets
+        }
+
         businessTitle = findViewById(R.id.business_title)
-        val inviteButton = findViewById<ImageButton>(R.id.invite_button)
+        //val inviteButton = findViewById<ImageButton>(R.id.invite_button)
         val addBookButton = findViewById<MaterialButton>(R.id.add_book_button)
         val businessSelector = findViewById<View>(R.id.business_selector)
         booksRecyclerView = findViewById(R.id.books_list)
@@ -67,17 +76,8 @@ class MainActivity : AppCompatActivity() {
         updateBusinessSelection()
 
         businessSelector.setOnClickListener { showBusinessSheet() }
-        inviteButton.setOnClickListener { /* no-op for visual parity */ }
+        //inviteButton.setOnClickListener { /* no-op for visual parity */ }
         addBookButton.setOnClickListener { showAddBookSheet() }
-
-        hideSystemBars()
-    }
-
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) {
-            hideSystemBars()
-        }
     }
 
     private fun updateBusinessSelection() {
@@ -151,12 +151,6 @@ class MainActivity : AppCompatActivity() {
 
         dialog.setContentView(view)
         dialog.show()
-    }
-
-    private fun hideSystemBars() {
-        val controller = WindowInsetsControllerCompat(window, window.decorView)
-        controller.hide(WindowInsetsCompat.Type.systemBars())
-        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     }
 
     private data class Business(

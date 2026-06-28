@@ -6,7 +6,9 @@
     android:layout_height="match_parent"
     android:background="#F0F2F5">
 
-    <!-- ───────────── TOP APP BAR ───────────── -->
+    <!-- ═══════════════════════════════════════════
+         TOP APP BAR  (no extra padding / margins)
+    ═══════════════════════════════════════════ -->
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/app_bar_layout"
         android:layout_width="match_parent"
@@ -14,21 +16,35 @@
         android:background="#FFFFFF"
         app:elevation="2dp">
 
-        <com.google.android.material.appbar.MaterialToolbar
+        <!-- Toolbar: back | title+subtitle | [space] | icons -->
+        <LinearLayout
             android:id="@+id/details_toolbar"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
+            android:layout_height="56dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
             android:background="#FFFFFF"
-            app:navigationIcon="@drawable/ic_arrow_back"
-            app:navigationIconTint="#111827"
-            app:navigationContentDescription="Back">
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp">
 
-            <!-- Title block -->
+            <!-- ← Back arrow -->
+            <ImageButton
+                android:id="@+id/back_button"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Back"
+                android:padding="10dp"
+                android:src="@drawable/ic_arrow_back"
+                app:tint="#111827" />
+
+            <!-- Title + subtitle -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:layout_marginStart="2dp">
 
                 <TextView
                     android:id="@+id/toolbar_title"
@@ -36,8 +52,10 @@
                     android:layout_height="wrap_content"
                     android:text="June entries"
                     android:textColor="#111827"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
 
                 <TextView
                     android:id="@+id/toolbar_subtitle"
@@ -45,251 +63,227 @@
                     android:layout_height="wrap_content"
                     android:text="Add Member, Book Activity etc"
                     android:textColor="#6B7280"
-                    android:textSize="12sp" />
+                    android:textSize="11sp"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
             </LinearLayout>
+        </LinearLayout>
 
-            <!-- Add member icon -->
-            <ImageButton
-                android:id="@+id/btn_add_member"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Add Member"
-                android:src="@android:drawable/ic_input_add"
-                app:tint="#2563EB" />
-
-            <!-- PDF icon -->
-            <ImageButton
-                android:id="@+id/btn_pdf"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Export PDF"
-                android:src="@android:drawable/ic_menu_share"
-                app:tint="#2563EB" />
-
-            <!-- Overflow icon -->
-            <ImageButton
-                android:id="@+id/btn_overflow"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="More options"
-                android:src="@android:drawable/ic_menu_more"
-                app:tint="#111827" />
-
-        </com.google.android.material.appbar.MaterialToolbar>
-
-        <!-- ───── Search bar ───── -->
+        <!-- ── Search bar ── -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/search_layout"
             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:layout_marginHorizontal="12dp"
-            android:layout_marginBottom="10dp"
+            android:layout_height="wrap_content"
+            android:minHeight="52dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="8dp"
             android:hint="Search by remark or amount"
             app:startIconDrawable="@android:drawable/ic_menu_search"
-            app:startIconTint="#6B7280"
-            app:boxCornerRadiusTopStart="26dp"
-            app:boxCornerRadiusTopEnd="26dp"
-            app:boxCornerRadiusBottomStart="26dp"
-            app:boxCornerRadiusBottomEnd="26dp"
+            app:startIconTint="#9CA3AF"
+            app:hintTextColor="#9CA3AF"
+            app:boxCornerRadiusTopStart="24dp"
+            app:boxCornerRadiusTopEnd="24dp"
+            app:boxCornerRadiusBottomStart="24dp"
+            app:boxCornerRadiusBottomEnd="24dp"
             app:boxStrokeColor="#E5E7EB"
-            app:boxBackgroundColor="#F9FAFB">
+            app:boxStrokeWidth="1dp"
+            app:boxBackgroundColor="#F3F4F6">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/search_edit_text"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
                 android:inputType="text"
                 android:background="@null"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:gravity="center_vertical"
                 android:textSize="14sp"
                 android:textColor="#111827" />
         </com.google.android.material.textfield.TextInputLayout>
 
     </com.google.android.material.appbar.AppBarLayout>
 
-    <!-- ───────────── SCROLLABLE BODY ───────────── -->
+    <!-- ═══════════════════════════════════════════
+         SCROLLABLE BODY
+    ═══════════════════════════════════════════ -->
     <androidx.core.widget.NestedScrollView
         android:id="@+id/scroll_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
-        android:paddingBottom="70dp"
+        android:paddingBottom="64dp"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <LinearLayout
-            android:id="@+id/entries_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- ───── Balance summary card ───── -->
-            <com.google.android.material.card.MaterialCardView
+            <!-- ── Balance summary card ── -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="#FFFFFF"
-                app:cardCornerRadius="0dp"
-                app:cardElevation="1dp">
+                android:orientation="vertical"
+                android:background="#FFFFFF"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="0dp">
 
+                <!-- Net Balance -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="16dp"
-                    android:paddingTop="14dp"
-                    android:paddingBottom="4dp">
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingBottom="10dp">
 
-                    <!-- Net Balance row -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:paddingBottom="10dp">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Net Balance"
-                            android:textColor="#111827"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tv_net_balance"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="0"
-                            android:textColor="#111827"
-                            android:textSize="16sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="#E5E7EB" />
-
-                    <!-- Total In row -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:paddingVertical="10dp">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Total In (+)"
-                            android:textColor="#111827"
-                            android:textSize="15sp" />
-
-                        <TextView
-                            android:id="@+id/tv_total_in"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="0"
-                            android:textColor="#16A34A"
-                            android:textSize="15sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="#E5E7EB" />
-
-                    <!-- Total Out row -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:paddingVertical="10dp">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Total Out (-)"
-                            android:textColor="#111827"
-                            android:textSize="15sp" />
-
-                        <TextView
-                            android:id="@+id/tv_total_out"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="0"
-                            android:textColor="#DC2626"
-                            android:textSize="15sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="#E5E7EB" />
-
-                    <!-- VIEW REPORTS link -->
                     <TextView
-                        android:id="@+id/btn_view_reports"
-                        android:layout_width="match_parent"
-                        android:layout_height="44dp"
-                        android:gravity="center"
-                        android:text="VIEW REPORTS  ›"
-                        android:textColor="#2563EB"
-                        android:textSize="13sp"
-                        android:textStyle="bold"
-                        android:letterSpacing="0.08"
-                        android:background="?attr/selectableItemBackground" />
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Net Balance"
+                        android:textColor="#111827"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
 
+                    <TextView
+                        android:id="@+id/tv_net_balance"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0"
+                        android:textColor="#111827"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
 
-            <!-- ───── "Showing N entries" label ───── -->
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E5E7EB" />
+
+                <!-- Total In -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Total In (+)"
+                        android:textColor="#374151"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tv_total_in"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0"
+                        android:textColor="#16A34A"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E5E7EB" />
+
+                <!-- Total Out -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Total Out (-)"
+                        android:textColor="#374151"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tv_total_out"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0"
+                        android:textColor="#DC2626"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E5E7EB" />
+
+                <!-- VIEW REPORTS -->
+                <TextView
+                    android:id="@+id/btn_view_reports"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:gravity="center"
+                    android:text="VIEW REPORTS  ›"
+                    android:textColor="#2563EB"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.06"
+                    android:background="?attr/selectableItemBackground" />
+
+            </LinearLayout>
+
+            <!-- ── "Showing N entries" ── -->
             <TextView
                 android:id="@+id/tv_entry_count"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingVertical="10dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="6dp"
                 android:gravity="center"
                 android:text="Showing 0 entries"
-                android:textColor="#6B7280"
-                android:textSize="13sp" />
+                android:textColor="#9CA3AF"
+                android:textSize="12sp" />
 
-            <!-- ───── Date group header ───── -->
+            <!-- ── Date header ── -->
             <TextView
                 android:id="@+id/tv_date_header"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingHorizontal="16dp"
-                android:paddingVertical="6dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
                 android:text=""
                 android:textColor="#374151"
                 android:textSize="13sp"
                 android:textStyle="bold"
                 android:background="#F0F2F5" />
 
-            <!-- ───── Dynamic entry rows go here (added by Activity) ───── -->
+            <!-- ── Dynamic entry rows injected by Activity ── -->
             <LinearLayout
                 android:id="@+id/entry_list_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical" />
+                android:orientation="vertical"
+                android:background="#FFFFFF" />
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <!-- ───────────── BOTTOM BUTTONS ───────────── -->
+    <!-- ═══════════════════════════════════════════
+         BOTTOM  CASH IN | CASH OUT  bar
+    ═══════════════════════════════════════════ -->
     <LinearLayout
         android:id="@+id/bottom_action_bar"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
+        android:layout_height="58dp"
         android:orientation="horizontal"
         android:layout_gravity="bottom">
 
@@ -301,10 +295,12 @@
             android:text="+ CASH IN"
             android:textAllCaps="true"
             android:textColor="#FFFFFF"
-            android:textSize="15sp"
+            android:textSize="14sp"
             android:textStyle="bold"
+            android:letterSpacing="0.06"
             android:backgroundTint="#16A34A"
-            app:cornerRadius="0dp" />
+            app:cornerRadius="0dp"
+            app:rippleColor="#0D000000" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_cash_out"
@@ -314,10 +310,12 @@
             android:text="− CASH OUT"
             android:textAllCaps="true"
             android:textColor="#FFFFFF"
-            android:textSize="15sp"
+            android:textSize="14sp"
             android:textStyle="bold"
+            android:letterSpacing="0.06"
             android:backgroundTint="#DC2626"
-            app:cornerRadius="0dp" />
+            app:cornerRadius="0dp"
+            app:rippleColor="#0D000000" />
 
     </LinearLayout>
 
