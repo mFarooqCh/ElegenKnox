@@ -9,7 +9,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.PopupMenu
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -181,7 +183,6 @@ class MainActivity : AppCompatActivity() {
             holder.name.text = business.name
             holder.role.text = business.role
             holder.count.text = "${business.bookCount} books"
-            holder.initial.text = business.name.firstOrNull()?.uppercaseChar()?.toString().orEmpty()
             holder.selected.visibility = if (position == selectedBusinessIndex) View.VISIBLE else View.GONE
         }
 
@@ -191,7 +192,6 @@ class MainActivity : AppCompatActivity() {
             val name: TextView = view.findViewById(R.id.business_name)
             val role: TextView = view.findViewById(R.id.business_role)
             val count: TextView = view.findViewById(R.id.business_count)
-            val initial: TextView = view.findViewById(R.id.business_initial)
             val selected: ImageView = view.findViewById(R.id.selected_indicator)
 
             init {
@@ -203,6 +203,24 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun showBookMenu(anchor: View, book: Book) {
+        PopupMenu(this, anchor).apply {
+            menu.add(0, 1, 0, "Edit")
+            menu.add(0, 2, 0, "Share")
+            menu.add(0, 3, 0, "Export PDF")
+            menu.add(0, 4, 0, "Delete")
+            setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    1 -> Toast.makeText(this@MainActivity, "Edit ${book.name}", Toast.LENGTH_SHORT).show()
+                    2 -> Toast.makeText(this@MainActivity, "Share ${book.name}", Toast.LENGTH_SHORT).show()
+                    3 -> Toast.makeText(this@MainActivity, "Export PDF ${book.name}", Toast.LENGTH_SHORT).show()
+                    4 -> Toast.makeText(this@MainActivity, "Delete ${book.name}", Toast.LENGTH_SHORT).show()
+                }
+                true
+            }
+        }.show()
     }
 
     private inner class BookAdapter(
@@ -221,6 +239,7 @@ class MainActivity : AppCompatActivity() {
             holder.balance.text = book.balance
             holder.icon.text = book.name.firstOrNull()?.uppercaseChar()?.toString().orEmpty()
             holder.itemView.setOnClickListener { showBookDetails(book) }
+            holder.menu.setOnClickListener { showBookMenu(it, book) }
         }
 
         override fun getItemCount() = items.size
@@ -230,6 +249,7 @@ class MainActivity : AppCompatActivity() {
             val meta: TextView = view.findViewById(R.id.book_meta)
             val balance: TextView = view.findViewById(R.id.book_balance)
             val icon: TextView = view.findViewById(R.id.book_icon)
+            val menu: ImageButton = view.findViewById(R.id.book_menu)
         }
     }
 }

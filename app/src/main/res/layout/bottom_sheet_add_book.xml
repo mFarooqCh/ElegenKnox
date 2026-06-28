@@ -90,6 +90,9 @@
         android:layout_height="56dp"
         android:layout_marginTop="16dp"
         android:enabled="false"
-        android:text="Add New Book"
-        android:textAllCaps="false" />
+        android:text="Add Book"
+        android:textAllCaps="false"
+        android:textStyle="bold"
+        app:icon="@android:drawable/ic_input_add"
+        app:iconPadding="8dp" />
 </LinearLayout>

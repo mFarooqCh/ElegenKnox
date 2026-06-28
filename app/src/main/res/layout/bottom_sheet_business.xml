@@ -47,6 +47,9 @@
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:layout_marginTop="16dp"
-        android:text="Add New Business"
-        android:textAllCaps="false" />
+        android:text="Add Business"
+        android:textAllCaps="false"
+        android:textStyle="bold"
+        app:icon="@android:drawable/ic_input_add"
+        app:iconPadding="8dp" />
 </LinearLayout>

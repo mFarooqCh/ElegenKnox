@@ -42,16 +42,39 @@
                 android:focusable="true"
                 android:background="?attr/selectableItemBackground">
 
-                <TextView
-                    android:id="@+id/business_title"
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Ghosia Hotel"
-                    android:textColor="#111827"
-                    android:textSize="17sp"
-                    android:textStyle="bold"
-                    android:maxLines="1"
-                    android:ellipsize="end" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:id="@+id/business_icon"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_marginEnd="8dp"
+                        android:src="@android:drawable/ic_menu_myplaces"
+                        app:tint="#2563EB" />
+
+                    <TextView
+                        android:id="@+id/business_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Ghosia Hotel"
+                        android:textColor="#111827"
+                        android:textSize="17sp"
+                        android:textStyle="bold"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
+
+                    <ImageView
+                        android:id="@+id/business_caret"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:layout_marginStart="4dp"
+                        android:src="@android:drawable/arrow_down_float"
+                        app:tint="#6B7280" />
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/business_subtitle"
@@ -207,6 +230,9 @@
         android:paddingHorizontal="20dp"
         android:text="Add New Book"
         android:textAllCaps="false"
+        android:textStyle="bold"
+        app:icon="@android:drawable/ic_input_add"
+        app:iconPadding="8dp"
         app:cornerRadius="28dp"
         app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
         app:layout_constraintEnd_toEndOf="parent" />
