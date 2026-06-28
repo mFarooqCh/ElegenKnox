@@ -1,4 +1,4 @@
-package com.elegen.elegenknox
+package com.elegen.elegencashbook
 
 import org.junit.Test
 

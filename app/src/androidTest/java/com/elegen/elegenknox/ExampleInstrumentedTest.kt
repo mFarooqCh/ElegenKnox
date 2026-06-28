@@ -1,4 +1,4 @@
-package com.elegen.elegenknox
+package com.elegen.elegencashbook
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -19,6 +19,6 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.elegen.elegenknox", appContext.packageName)
+        assertEquals("com.elegen.elegencashbook", appContext.packageName)
     }
 }

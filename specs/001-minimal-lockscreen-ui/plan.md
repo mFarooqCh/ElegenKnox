@@ -68,7 +68,7 @@ app/
 ├── src/
 │   ├── main/
 │   │   ├── AndroidManifest.xml
-│   │   ├── java/com/elegen/elegenknox/MainActivity.kt
+│   │   ├── java/com/elegen/elegencashbook/MainActivity.kt
 │   │   └── res/
 │   │       ├── layout/activity_main.xml
 │   │       ├── values/

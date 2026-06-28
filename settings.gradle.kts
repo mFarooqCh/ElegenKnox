@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ElegenKnox"
+rootProject.name = "ElegenCashBook"
 include(":app")

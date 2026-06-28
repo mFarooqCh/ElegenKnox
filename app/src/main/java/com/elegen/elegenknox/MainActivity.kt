@@ -1,4 +1,4 @@
-package com.elegen.elegenknox
+package com.elegen.elegencashbook
 
 import android.os.Bundle
 import android.text.InputFilter

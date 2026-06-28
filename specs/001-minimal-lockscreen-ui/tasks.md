@@ -39,7 +39,7 @@ description: "Task list for minimal lock screen UI"
 **Purpose**: Base UI scaffold required by all user stories
 
 - [x] T003 Create the lock screen layout skeleton with centered input, Unlock button, and feedback TextView in app/src/main/res/layout/activity_main.xml
-- [x] T004 Wire MainActivity to use activity_main.xml and bind view references in app/src/main/java/com/elegen/elegenknox/MainActivity.kt
+- [x] T004 Wire MainActivity to use activity_main.xml and bind view references in app/src/main/java/com/elegen/elegencashbook/MainActivity.kt
 
 **Checkpoint**: Base lock screen UI renders without validation logic
 
@@ -54,7 +54,7 @@ description: "Task list for minimal lock screen UI"
 ### Implementation for User Story 1
 
 - [x] T005 [P] [US1] Add input hint and feedback strings in app/src/main/res/values/strings.xml
-- [x] T006 [P] [US1] Implement 8-character input filter, trim comparison, and feedback mapping in app/src/main/java/com/elegen/elegenknox/MainActivity.kt
+- [x] T006 [P] [US1] Implement 8-character input filter, trim comparison, and feedback mapping in app/src/main/java/com/elegen/elegencashbook/MainActivity.kt
 - [x] T007 [P] [US1] Apply string resources to the input hint and feedback TextView in app/src/main/res/layout/activity_main.xml
 
 **Checkpoint**: User Story 1 is fully functional and testable independently
@@ -71,7 +71,7 @@ description: "Task list for minimal lock screen UI"
 
 - [x] T008 [US2] Ensure MainActivity is the launcher and no other screens are exposed in app/src/main/AndroidManifest.xml
 - [x] T009 [P] [US2] Update the app theme to NoActionBar and black background in app/src/main/res/values/themes.xml and app/src/main/res/values-night/themes.xml
-- [x] T010 [US2] Hide system bars for immersive full-screen mode in app/src/main/java/com/elegen/elegenknox/MainActivity.kt
+- [x] T010 [US2] Hide system bars for immersive full-screen mode in app/src/main/java/com/elegen/elegencashbook/MainActivity.kt
 - [x] T011 [US2] Set a black background and verify centered constraints for rotation in app/src/main/res/layout/activity_main.xml
 
 **Checkpoint**: User Story 2 is fully functional and testable independently
@@ -120,7 +120,7 @@ Task: "Apply string resources to the input hint and feedback TextView in app/src
 
 ```bash
 Task: "Update the app theme to NoActionBar and black background in app/src/main/res/values/themes.xml and app/src/main/res/values-night/themes.xml"
-Task: "Hide system bars for immersive full-screen mode in app/src/main/java/com/elegen/elegenknox/MainActivity.kt"
+Task: "Hide system bars for immersive full-screen mode in app/src/main/java/com/elegen/elegencashbook/MainActivity.kt"
 ```
 
 ---

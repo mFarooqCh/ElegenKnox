@@ -43,6 +43,6 @@ Business logic MUST be covered by unit tests, and balance calculations MUST be v
 
 ## Governance
 
-This constitution governs the ElegenKnox cashbook project and supersedes conflicting guidance for this product area. Amendments MUST include a documented rationale, impact analysis, and a semantic version bump. All plans, specs, and task lists MUST include a constitution compliance check, and any deviations MUST be approved and documented. Compliance MUST be reviewed at implementation milestones and before release candidates.
+This constitution governs the ElegenCashBook cashbook project and supersedes conflicting guidance for this product area. Amendments MUST include a documented rationale, impact analysis, and a semantic version bump. All plans, specs, and task lists MUST include a constitution compliance check, and any deviations MUST be approved and documented. Compliance MUST be reviewed at implementation milestones and before release candidates.
 
 **Version**: 2.0.0 | **Ratified**: 2026-06-28 | **Last Amended**: 2026-06-28

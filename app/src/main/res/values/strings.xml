@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ElegenKnox</string>
+    <string name="app_name">ElegenCashBook</string>
     <string name="lock_hint">Enter the code to unlock the phone</string>
     <string name="lock_unlock">Unlock</string>
     <string name="lock_success">Unlocked</string>
