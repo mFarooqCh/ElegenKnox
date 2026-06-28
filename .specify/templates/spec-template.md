@@ -75,12 +75,12 @@
 - What happens when [boundary condition]?
 - How does system handle [error scenario]?
 
-### Device Validation Matrix *(mandatory for this project)*
+### Offline, Sync, and Recovery Validation Matrix *(mandatory for this project)*
 
 - Target devices: [model list]
-- OEM coverage: [e.g., Samsung, Xiaomi, Motorola]
 - Android versions: [list]
-- Test conditions: [offline/online, reset attempts, uninstall attempts]
+- Test conditions: [offline usage, online sync, failed sync retry, backup recovery, device loss recovery]
+- Security coverage: [authenticated backup access, Firestore access rules, no sensitive data logging]
 
 ## Requirements *(mandatory)*
 

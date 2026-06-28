@@ -31,12 +31,12 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- Control-first enforcement path is documented (system control before UI).
-- Native-first approach confirmed (Kotlin + Android SDK only).
-- Incremental enforcement phases and exit criteria are defined.
-- Real-device validation plan and OEM matrix are included.
-- Failure/bypass scenarios and offline-first behavior are covered.
-- Scope expansion is justified by prior phase validation.
+- Offline-first behavior is documented and local Room persistence is the primary path.
+- Data integrity rules for local-first saves and automatic retry are defined.
+- User ownership and recovery expectations for authenticated backup are covered.
+- Financial accuracy rules, including PKR/paisa handling and deterministic balance calculations, are captured.
+- Security and authentication constraints for cloud sync are documented.
+- Maintainability, performance, and test expectations are reflected in the implementation plan.
 
 ## Project Structure
 

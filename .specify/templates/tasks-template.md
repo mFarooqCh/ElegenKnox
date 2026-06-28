@@ -8,7 +8,7 @@ description: "Task list template for feature implementation"
 **Input**: Design documents from `/specs/[###-feature-name]/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: The examples below include test tasks. Automated tests are OPTIONAL unless the feature spec requests them, but real-device validation tasks are REQUIRED for this project.
+**Tests**: The examples below include test tasks. Automated tests are REQUIRED for business logic and balance calculations, and offline-first backup validation tasks are REQUIRED for this project.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
