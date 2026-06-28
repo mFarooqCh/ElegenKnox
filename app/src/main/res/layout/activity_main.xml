@@ -24,7 +24,7 @@
         <EditText
             android:id="@+id/code_input"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="48pt"
             android:autofillHints=""
             android:hint="@string/lock_hint"
             android:imeOptions="actionDone"
