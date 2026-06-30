@@ -25,11 +25,11 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="64dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingStart="16dp"
-            android:paddingEnd="8dp">
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp">
 
             <!-- Business name + subtitle -->
             <LinearLayout
@@ -61,7 +61,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Ghosia Hotel"
-                        android:textColor="#111827"
+                        android:textColor="#0F172A"
                         android:textSize="17sp"
                         android:textStyle="bold"
                         android:maxLines="1"
@@ -97,8 +97,8 @@
         android:layout_height="0dp"
         android:clipToPadding="false"
         android:paddingHorizontal="20dp"
-        android:paddingTop="16dp"
-        android:paddingBottom="16dp"
+        android:paddingTop="18dp"
+        android:paddingBottom="24dp"
         android:scrollbars="none"
         app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
         app:layout_constraintEnd_toEndOf="parent"
@@ -115,14 +115,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:backgroundTint="#2563EB"
-                app:cardCornerRadius="22dp"
+                app:cardCornerRadius="24dp"
                 app:cardElevation="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="20dp">
+                    android:padding="22dp">
 
                     <FrameLayout
                         android:layout_width="44dp"
@@ -152,7 +152,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="Create books, track balances, and manage your cash flow with a clean overview."
+                        android:text="Create books, track balances, and manage your cash flow in one clean place."
                         android:textColor="#DCEAFE"
                         android:textSize="14sp" />
                 </LinearLayout>
@@ -163,9 +163,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:text="Your Books"
-                android:textColor="#111827"
-                android:textSize="20sp"
+                android:text="YOUR BOOKS"
+                android:textAllCaps="true"
+                android:textColor="#0F172A"
+                android:textSize="16sp"
                 android:textStyle="bold" />
 
             <!-- Tip card -->
@@ -173,7 +174,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:backgroundTint="#F3F4F6"
+                android:backgroundTint="#F8FAFC"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="0dp">
 
@@ -181,8 +182,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:padding="14dp"
-                    android:text="Tip: Keep each book focused on one purpose so balancing stays simple."
-                    android:textColor="#4B5563"
+                    android:text="Tip: keep each book focused on one purpose so balancing stays simple."
+                    android:textColor="#475569"
                     android:textSize="14sp" />
             </com.google.android.material.card.MaterialCardView>
 
@@ -211,7 +212,7 @@
         android:layout_height="wrap_content"
         android:background="#FFFFFF"
         app:itemIconTint="#2563EB"
-        app:itemTextColor="#111827"
+        app:itemTextColor="#0F172A"
         app:labelVisibilityMode="labeled"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -224,16 +225,17 @@
     <com.google.android.material.button.MaterialButton
         android:id="@+id/add_book_button"
         android:layout_width="wrap_content"
-        android:layout_height="56dp"
+        android:layout_height="52dp"
         android:layout_marginEnd="20dp"
         android:layout_marginBottom="12dp"
-        android:paddingHorizontal="20dp"
-        android:text="Add New Book"
-        android:textAllCaps="false"
+        android:paddingHorizontal="18dp"
+        android:text="ADD BOOK"
+        android:textAllCaps="true"
         android:textStyle="bold"
         app:icon="@android:drawable/ic_input_add"
-        app:iconPadding="8dp"
-        app:cornerRadius="28dp"
+        app:iconSize="18dp"
+        app:iconPadding="6dp"
+        app:cornerRadius="20dp"
         app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
         app:layout_constraintEnd_toEndOf="parent" />
 

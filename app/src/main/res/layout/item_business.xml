@@ -6,7 +6,8 @@
     android:layout_height="wrap_content"
     android:backgroundTintMode="src_over"
     android:paddingHorizontal="4dp"
-    android:paddingVertical="12dp">
+    android:paddingVertical="12dp"
+    android:background="#FFFFFF">
 
     <FrameLayout
         android:id="@+id/business_icon_container"
@@ -65,13 +66,13 @@
 
     <ImageView
         android:id="@+id/selected_indicator"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
         android:src="@android:drawable/checkbox_on_background"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:tint="#2E7D32"
+        app:tint="#2563EB"
         tools:visibility="visible" />
 </androidx.constraintlayout.widget.ConstraintLayout>

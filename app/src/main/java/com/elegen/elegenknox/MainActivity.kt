@@ -22,6 +22,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.chip.Chip
 import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import androidx.activity.enableEdgeToEdge
 
 class MainActivity : AppCompatActivity() {
@@ -33,9 +34,9 @@ class MainActivity : AppCompatActivity() {
     )
 
     private val books = mutableListOf(
-        Book("June Expenses", "Updated today", "₦24,500"),
-        Book("Petty Cash Book", "Created 2 days ago", "₦8,200"),
-        Book("Project Book", "Created 1 week ago", "₦42,100")
+        Book("June Expenses", "Updated today", "PKR 24,500"),
+        Book("Petty Cash Book", "Created 2 days ago", "PKR 8,200"),
+        Book("Project Book", "Created 1 week ago", "PKR 42,100")
     )
 
     private lateinit var booksRecyclerView: RecyclerView
@@ -95,10 +96,12 @@ class MainActivity : AppCompatActivity() {
         val addBusinessButton = view.findViewById<MaterialButton>(R.id.add_business_button)
 
         businessList.layoutManager = LinearLayoutManager(this)
+        addBusinessButton.isEnabled = true
+        addBusinessButton.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#2563EB"))
+        addBusinessButton.setTextColor(android.graphics.Color.WHITE)
         businessList.adapter = BusinessAdapter(businesses) { index ->
             selectedBusinessIndex = index
             updateBusinessSelection()
-            dialog.dismiss()
         }
 
         closeButton.setOnClickListener { dialog.dismiss() }
@@ -116,6 +119,7 @@ class MainActivity : AppCompatActivity() {
         val view = layoutInflater.inflate(R.layout.bottom_sheet_add_book, null)
         val bookNameInput = view.findViewById<TextInputEditText>(R.id.book_name_input)
         val addBookButton = view.findViewById<MaterialButton>(R.id.add_book_button)
+        val bookNameLayout = view.findViewById<TextInputLayout>(R.id.book_name_layout)
         val closeButton = view.findViewById<ImageButton>(R.id.close_book_sheet)
         val suggestionChips = listOf(
             view.findViewById<Chip>(R.id.chip_june),
@@ -127,7 +131,16 @@ class MainActivity : AppCompatActivity() {
         val watcher = object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                addBookButton.isEnabled = !s.isNullOrBlank()
+                val hasText = !s.isNullOrBlank()
+                addBookButton.isEnabled = hasText
+                if (hasText) {
+                    bookNameLayout.error = null
+                    addBookButton.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#2563EB"))
+                    addBookButton.setTextColor(android.graphics.Color.WHITE)
+                } else {
+                    addBookButton.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#E5E7EB"))
+                    addBookButton.setTextColor(android.graphics.Color.parseColor("#6B7280"))
+                }
             }
             override fun afterTextChanged(s: Editable?) = Unit
         }
@@ -144,10 +157,14 @@ class MainActivity : AppCompatActivity() {
         addBookButton.setOnClickListener {
             val name = bookNameInput.text?.toString()?.trim().orEmpty()
             if (name.isNotBlank()) {
-                books.add(0, Book(name, "Added just now", "₦0.00"))
+                books.add(0, Book(name, "Added just now", "PKR 0.00"))
                 booksAdapter.notifyItemInserted(0)
                 booksRecyclerView.scrollToPosition(0)
                 dialog.dismiss()
+            } else {
+                bookNameLayout.error = "Name is required"
+                bookNameLayout.boxStrokeColor = android.graphics.Color.parseColor("#DC2626")
+                bookNameInput.requestFocus()
             }
         }
 
