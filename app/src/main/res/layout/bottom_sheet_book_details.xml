@@ -75,8 +75,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:text="PKR 0.00"
-                android:textColor="#2563EB"
+                android:text="  0.00"
+                android:textColor="#4F46E5"
                 android:textSize="24sp"
                 android:textStyle="bold" />
         </LinearLayout>

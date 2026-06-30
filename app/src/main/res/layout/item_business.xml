@@ -5,16 +5,16 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:backgroundTintMode="src_over"
-    android:paddingHorizontal="4dp"
-    android:paddingVertical="12dp"
-    android:background="#FFFFFF">
+    android:layout_marginBottom="10dp"
+    android:padding="12dp"
+    android:background="@drawable/bg_book_item">
 
     <FrameLayout
         android:id="@+id/business_icon_container"
         android:layout_width="44dp"
         android:layout_height="44dp"
         android:background="@drawable/round_shape"
-        android:backgroundTint="#E3F2FD"
+        android:backgroundTint="#E0E7FF"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
@@ -23,8 +23,8 @@
             android:layout_width="22dp"
             android:layout_height="22dp"
             android:layout_gravity="center"
-            android:src="@android:drawable/ic_menu_myplaces"
-            app:tint="#1565C0" />
+            android:src="@drawable/ic_book_decor"
+            app:tint="#4F46E5" />
     </FrameLayout>
 
     <LinearLayout
@@ -66,13 +66,13 @@
 
     <ImageView
         android:id="@+id/selected_indicator"
-        android:layout_width="20dp"
-        android:layout_height="20dp"
-        android:src="@android:drawable/checkbox_on_background"
-        android:visibility="gone"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:src="@drawable/ic_radio_unchecked"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:tint="#2563EB"
-        tools:visibility="visible" />
+        app:tint="#D1D5DB"
+        tools:src="@drawable/ic_check_circle"
+        tools:tint="#16A34A" />
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -4,13 +4,17 @@ import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.graphics.Color
 import android.graphics.Typeface
+import android.content.Context
 import android.os.Bundle
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.LayoutInflater
+import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -36,6 +40,7 @@ class BookDetailsActivity : AppCompatActivity() {
     private var totalOut = 0.0
 
     private lateinit var tvNetBalance:      TextView
+    private lateinit var tvEntriesInBook:   TextView
     private lateinit var tvTotalIn:         TextView
     private lateinit var tvTotalOut:        TextView
     private lateinit var tvEntryCount:      TextView
@@ -65,6 +70,7 @@ class BookDetailsActivity : AppCompatActivity() {
 
         // ── Summary views ─────────────────────────────────────────────────
         tvNetBalance       = findViewById(R.id.tv_net_balance)
+        tvEntriesInBook    = findViewById(R.id.tv_entries_in_book)
         tvTotalIn          = findViewById(R.id.tv_total_in)
         tvTotalOut         = findViewById(R.id.tv_total_out)
         tvEntryCount       = findViewById(R.id.tv_entry_count)
@@ -82,6 +88,22 @@ class BookDetailsActivity : AppCompatActivity() {
         refreshSummary()
     }
 
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        if (ev.action == MotionEvent.ACTION_DOWN) {
+            val focused = currentFocus
+            if (focused is EditText) {
+                val rect = android.graphics.Rect()
+                focused.getGlobalVisibleRect(rect)
+                if (!rect.contains(ev.rawX.toInt(), ev.rawY.toInt())) {
+                    focused.clearFocus()
+                    val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                    imm.hideSoftInputFromWindow(focused.windowToken, 0)
+                }
+            }
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // Bottom-sheet dialog
     // ─────────────────────────────────────────────────────────────────────
@@ -90,8 +112,10 @@ class BookDetailsActivity : AppCompatActivity() {
         val view   = LayoutInflater.from(this).inflate(R.layout.dialog_add_entry, null)
         dialog.setContentView(view)
 
-        val accentHex   = if (isCashIn) "#2563EB" else "#DC2626"
-        val accentColor = Color.parseColor(accentHex)
+        val accentHex     = if (isCashIn) "#16A34A" else "#DC2626"
+        val accentBgHex   = if (isCashIn) "#DCFCE7" else "#FEE2E2"
+        val accentColor   = Color.parseColor(accentHex)
+        val accentBgColor = Color.parseColor(accentBgHex)
 
         // Title
         view.findViewById<TextView>(R.id.dialog_title).apply {
@@ -99,10 +123,21 @@ class BookDetailsActivity : AppCompatActivity() {
             setTextColor(accentColor)
         }
 
-        // Amount box stroke colour
+        // Header icon circle
+        view.findViewById<FrameLayout>(R.id.dialog_icon_bg).apply {
+            backgroundTintList = android.content.res.ColorStateList.valueOf(accentBgColor)
+        }
+        view.findViewById<ImageView>(R.id.dialog_icon).apply {
+            setImageResource(if (isCashIn) R.drawable.ic_plus else R.drawable.ic_minus)
+            imageTintList = android.content.res.ColorStateList.valueOf(accentColor)
+        }
+
+        // Amount box stroke colour + text colour
         view.findViewById<TextInputLayout>(R.id.layout_amount).apply {
             boxStrokeColor = accentColor
+            hintTextColor = android.content.res.ColorStateList.valueOf(accentColor)
         }
+        view.findViewById<TextInputEditText>(R.id.et_amount).setTextColor(accentColor)
 
         // Save button colour
         view.findViewById<MaterialButton>(R.id.btn_save).apply {
@@ -172,10 +207,11 @@ class BookDetailsActivity : AppCompatActivity() {
     // ─────────────────────────────────────────────────────────────────────
     private fun refreshSummary() {
         val net = totalIn - totalOut
-        tvNetBalance.text = net.toLong().toString()
-        tvTotalIn.text    = totalIn.toLong().toString()
-        tvTotalOut.text   = totalOut.toLong().toString()
         val count = entries.size
+        tvNetBalance.text    = "Rs ${net.toLong()}"
+        tvEntriesInBook.text = "$count ${if (count == 1) "entry" else "entries"} this book"
+        tvTotalIn.text       = "Rs ${totalIn.toLong()}"
+        tvTotalOut.text      = "Rs ${totalOut.toLong()}"
         tvEntryCount.text = "Showing $count ${if (count == 1) "entry" else "entries"}"
         tvDateHeader.text = entries.firstOrNull()?.date ?: ""
     }
@@ -183,11 +219,19 @@ class BookDetailsActivity : AppCompatActivity() {
     // ─────────────────────────────────────────────────────────────────────
     private fun refreshEntryList() {
         entryListContainer.removeAllViews()
-        val dp = resources.displayMetrics.density
 
         fun px(dp: Int) = (dp * resources.displayMetrics.density).toInt()
 
-        entries.forEach { entry ->
+        // entries[0] is newest; compute running balance in chronological order, oldest first.
+        val runningBalances = DoubleArray(entries.size)
+        var running = 0.0
+        for (i in entries.indices.reversed()) {
+            val entry = entries[i]
+            running += if (entry.isCashIn) entry.amount else -entry.amount
+            runningBalances[i] = running
+        }
+
+        entries.forEachIndexed { index, entry ->
 
             // ── Divider ──
             entryListContainer.addView(View(this).apply {
@@ -198,99 +242,88 @@ class BookDetailsActivity : AppCompatActivity() {
 
             // ── Row container ──
             val row = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(px(16), px(12), px(16), px(10))
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(px(16), px(12), px(16), px(12))
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT)
                 setBackgroundColor(Color.WHITE)
             }
 
-            // Top: [Cash chip]  [amount / balance]
-            val topRow = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity     = Gravity.CENTER_VERTICAL
-            }
+            val accentColor = if (entry.isCashIn) "#16A34A" else "#DC2626"
+            val accentBg    = if (entry.isCashIn) "#DCFCE7" else "#FEE2E2"
 
-            // "Cash" chip — fixed wrap_content, NOT weight=1
-            val chipText = TextView(this).apply {
-                text = "Cash"
-                textSize = 12f
-                setTextColor(Color.parseColor("#2563EB"))
-                setBackgroundResource(R.drawable.bg_chip_blue)
-                setPadding(px(10), px(3), px(10), px(3))
+            // Leading icon circle
+            val iconCircle = FrameLayout(this).apply {
+                background = ContextCompat.getDrawable(this@BookDetailsActivity, R.drawable.round_shape)
+                backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor(accentBg))
+                layoutParams = LinearLayout.LayoutParams(px(36), px(36))
+            }
+            iconCircle.addView(ImageView(this).apply {
+                setImageResource(if (entry.isCashIn) R.drawable.ic_arrow_up_right else R.drawable.ic_arrow_down_left)
+                imageTintList = android.content.res.ColorStateList.valueOf(Color.parseColor(accentColor))
+                layoutParams = FrameLayout.LayoutParams(px(16), px(16), Gravity.CENTER)
+            })
+
+            // Middle: title + chip/meta
+            val middleCol = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).also {
+                    it.marginStart = px(12)
+                }
+            }
+            middleCol.addView(TextView(this).apply {
+                text = entry.remark.ifEmpty { if (entry.isCashIn) "Cash In" else "Cash Out" }
+                textSize = 15f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.parseColor("#111827"))
+            })
+
+            val metaRow = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT)
-            }
-
-            // Spacer to push amount to right
-            val spacer = View(this).apply {
-                layoutParams = LinearLayout.LayoutParams(0,
-                    LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            }
-
-            // Amount + balance stacked right
-            val amountCol = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity     = Gravity.END
-            }
-
-            val amountColor = if (entry.isCashIn) "#16A34A" else "#DC2626"
-
-            val tvAmount = TextView(this).apply {
-                text = entry.amount.toLong().toString()
-                textSize = 16f
-                setTypeface(null, Typeface.BOLD)
-                setTextColor(Color.parseColor(amountColor))
-                gravity = Gravity.END
-            }
-            val tvBalance = TextView(this).apply {
-                val running = totalIn - totalOut   // simplified; full running calc below
-                text = "Balance: ${(totalIn - totalOut).toLong()}"
-                textSize = 12f
-                setTextColor(Color.parseColor("#6B7280"))
-                gravity = Gravity.END
-            }
-
-            amountCol.addView(tvAmount)
-            amountCol.addView(tvBalance)
-            topRow.addView(chipText)
-            topRow.addView(spacer)
-            topRow.addView(amountCol)
-
-            // Description
-            val tvDesc = TextView(this).apply {
-                text = entry.remark.ifEmpty { "—" }
-                textSize = 15f
-                setTextColor(Color.parseColor("#111827"))
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT).also { it.topMargin = px(6) }
-            }
-
-            // Footer: Entry by You  at HH:MM
-            val footerRow = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT).also { it.topMargin = px(4) }
             }
-            footerRow.addView(TextView(this).apply {
-                text = "Entry by You"
-                textSize = 12f
-                setTypeface(null, Typeface.BOLD)
-                setTextColor(Color.parseColor("#16A34A"))
+            metaRow.addView(TextView(this).apply {
+                text = "Cash"
+                textSize = 11f
+                setTextColor(Color.parseColor("#2563EB"))
+                setBackgroundResource(R.drawable.bg_chip_blue)
+                setPadding(px(8), px(2), px(8), px(2))
             })
-            footerRow.addView(TextView(this).apply {
-                text = "  at ${entry.time}"
+            metaRow.addView(TextView(this).apply {
+                text = "  Entry by You · ${entry.time}"
                 textSize = 12f
                 setTextColor(Color.parseColor("#6B7280"))
             })
+            middleCol.addView(metaRow)
 
-            row.addView(topRow)
-            row.addView(tvDesc)
-            row.addView(footerRow)
+            // Trailing: amount + balance
+            val amountCol = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.END
+            }
+            val sign = if (entry.isCashIn) "+" else "-"
+            amountCol.addView(TextView(this).apply {
+                text = "$sign Rs ${entry.amount.toLong()}"
+                textSize = 15f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.parseColor(accentColor))
+                gravity = Gravity.END
+            })
+            amountCol.addView(TextView(this).apply {
+                text = "Bal Rs ${runningBalances[index].toLong()}"
+                textSize = 12f
+                setTextColor(Color.parseColor("#6B7280"))
+                gravity = Gravity.END
+            })
+
+            row.addView(iconCircle)
+            row.addView(middleCol)
+            row.addView(amountCol)
             entryListContainer.addView(row)
         }
     }

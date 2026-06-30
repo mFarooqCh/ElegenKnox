@@ -13,18 +13,24 @@
         android:layout_height="56dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingStart="4dp"
-        android:paddingEnd="8dp">
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp">
 
-        <ImageButton
-            android:id="@+id/dialog_back_btn"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:padding="10dp"
-            android:src="@drawable/ic_arrow_back"
-            android:contentDescription="Close"
-            app:tint="#111827" />
+        <FrameLayout
+            android:id="@+id/dialog_icon_bg"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="@drawable/round_shape"
+            android:backgroundTint="#DCFCE7">
+
+            <ImageView
+                android:id="@+id/dialog_icon"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_plus"
+                app:tint="#16A34A" />
+        </FrameLayout>
 
         <TextView
             android:id="@+id/dialog_title"
@@ -32,20 +38,20 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Add Cash In Entry"
-            android:textColor="#2563EB"
+            android:textColor="#16A34A"
             android:textSize="17sp"
             android:textStyle="bold"
-            android:layout_marginStart="4dp" />
+            android:layout_marginStart="10dp" />
 
         <ImageButton
-            android:id="@+id/dialog_settings_btn"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:id="@+id/dialog_back_btn"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:padding="8dp"
-            android:src="@android:drawable/ic_menu_preferences"
-            android:contentDescription="Settings"
-            app:tint="#2563EB" />
+            android:src="@drawable/ic_close"
+            android:contentDescription="Close"
+            app:tint="#6B7280" />
 
     </LinearLayout>
 
@@ -65,70 +71,60 @@
         <!-- Date picker -->
         <LinearLayout
             android:id="@+id/btn_pick_date"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="10dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:background="?attr/selectableItemBackground"
-            android:paddingEnd="16dp">
+            android:background="@drawable/bg_pill_outline"
+            android:paddingHorizontal="12dp">
 
             <ImageView
-                android:layout_width="17dp"
-                android:layout_height="17dp"
-                android:src="@android:drawable/ic_menu_today"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@drawable/ic_calendar"
                 android:contentDescription="Date"
-                app:tint="#374151" />
+                app:tint="#6B7280" />
 
             <TextView
                 android:id="@+id/tv_selected_date"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
                 android:text="28/06/2026"
                 android:textColor="#111827"
-                android:textSize="14sp" />
-
-            <ImageView
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:layout_marginStart="3dp"
-                android:src="@android:drawable/arrow_down_float"
-                android:contentDescription=""
-                app:tint="#6B7280" />
+                android:textSize="13sp" />
         </LinearLayout>
 
         <!-- Time picker -->
         <LinearLayout
             android:id="@+id/btn_pick_time"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:background="?attr/selectableItemBackground">
+            android:background="@drawable/bg_pill_outline"
+            android:paddingHorizontal="12dp">
 
             <ImageView
-                android:layout_width="17dp"
-                android:layout_height="17dp"
-                android:src="@android:drawable/ic_menu_recent_history"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@drawable/ic_clock"
                 android:contentDescription="Time"
-                app:tint="#374151" />
+                app:tint="#6B7280" />
 
             <TextView
                 android:id="@+id/tv_selected_time"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
                 android:text="11:39 pm"
                 android:textColor="#111827"
-                android:textSize="14sp" />
-
-            <ImageView
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:layout_marginStart="3dp"
-                android:src="@android:drawable/arrow_down_float"
-                android:contentDescription=""
-                app:tint="#6B7280" />
+                android:textSize="13sp" />
         </LinearLayout>
 
     </LinearLayout>
@@ -154,8 +150,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:inputType="numberDecimal"
-            android:textColor="#111827"
-            android:textSize="16sp" />
+            android:textColor="#16A34A"
+            android:textSize="22sp"
+            android:textStyle="bold" />
     </com.google.android.material.textfield.TextInputLayout>
 
     <!-- ── Remark field ── -->
@@ -202,7 +199,7 @@
             android:textSize="12sp"
             android:textColor="#374151"
             app:strokeColor="#D1D5DB"
-            app:cornerRadius="6dp" />
+            app:cornerRadius="14dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_save"
@@ -214,7 +211,7 @@
             android:textSize="13sp"
             android:textColor="#FFFFFF"
             android:backgroundTint="#2563EB"
-            app:cornerRadius="6dp" />
+            app:cornerRadius="14dp" />
 
     </LinearLayout>
 

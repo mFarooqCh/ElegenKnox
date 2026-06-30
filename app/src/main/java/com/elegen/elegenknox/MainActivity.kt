@@ -9,7 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.ImageView
-import android.widget.PopupMenu
+import android.widget.PopupWindow
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -34,9 +34,9 @@ class MainActivity : AppCompatActivity() {
     )
 
     private val books = mutableListOf(
-        Book("June Expenses", "Updated today", "PKR 24,500"),
-        Book("Petty Cash Book", "Created 2 days ago", "PKR 8,200"),
-        Book("Project Book", "Created 1 week ago", "PKR 42,100")
+        Book("June Expenses", "Updated today", "  24,500"),
+        Book("Petty Cash Book", "Created 2 days ago", "  8,200"),
+        Book("Project Book", "Created 1 week ago", "  42,100")
     )
 
     private lateinit var booksRecyclerView: RecyclerView
@@ -81,6 +81,13 @@ class MainActivity : AppCompatActivity() {
         businessSelector.setOnClickListener { showBusinessSheet() }
         //inviteButton.setOnClickListener { /* no-op for visual parity */ }
         addBookButton.setOnClickListener { showAddBookSheet() }
+
+        findViewById<View>(R.id.tip_dismiss_button).setOnClickListener {
+            findViewById<View>(R.id.tip_card).visibility = View.GONE
+        }
+        findViewById<View>(R.id.hero_dismiss_button).setOnClickListener {
+            findViewById<View>(R.id.hero_card).visibility = View.GONE
+        }
     }
 
     private fun updateBusinessSelection() {
@@ -157,7 +164,7 @@ class MainActivity : AppCompatActivity() {
         addBookButton.setOnClickListener {
             val name = bookNameInput.text?.toString()?.trim().orEmpty()
             if (name.isNotBlank()) {
-                books.add(0, Book(name, "Added just now", "PKR 0.00"))
+                books.add(0, Book(name, "Added just now", "  0.00"))
                 booksAdapter.notifyItemInserted(0)
                 booksRecyclerView.scrollToPosition(0)
                 dialog.dismiss()
@@ -200,7 +207,13 @@ class MainActivity : AppCompatActivity() {
             holder.name.text = business.name
             holder.role.text = business.role
             holder.count.text = "${business.bookCount} books"
-            holder.selected.visibility = if (position == selectedBusinessIndex) View.VISIBLE else View.GONE
+            if (position == selectedBusinessIndex) {
+                holder.selected.setImageResource(R.drawable.ic_check_circle)
+                holder.selected.setColorFilter(0xFF16A34A.toInt())
+            } else {
+                holder.selected.setImageResource(R.drawable.ic_radio_unchecked)
+                holder.selected.setColorFilter(0xFFD1D5DB.toInt())
+            }
         }
 
         override fun getItemCount() = items.size
@@ -223,21 +236,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showBookMenu(anchor: View, book: Book) {
-        PopupMenu(this, anchor).apply {
-            menu.add(0, 1, 0, "Edit")
-            menu.add(0, 2, 0, "Share")
-            menu.add(0, 3, 0, "Export PDF")
-            menu.add(0, 4, 0, "Delete")
-            setOnMenuItemClickListener { item ->
-                when (item.itemId) {
-                    1 -> Toast.makeText(this@MainActivity, "Edit ${book.name}", Toast.LENGTH_SHORT).show()
-                    2 -> Toast.makeText(this@MainActivity, "Share ${book.name}", Toast.LENGTH_SHORT).show()
-                    3 -> Toast.makeText(this@MainActivity, "Export PDF ${book.name}", Toast.LENGTH_SHORT).show()
-                    4 -> Toast.makeText(this@MainActivity, "Delete ${book.name}", Toast.LENGTH_SHORT).show()
-                }
-                true
+        val popupWidthPx = (180 * resources.displayMetrics.density).toInt()
+        val popupView = LayoutInflater.from(this).inflate(R.layout.popup_book_menu, null)
+        val popupWindow = PopupWindow(popupView, popupWidthPx, ViewGroup.LayoutParams.WRAP_CONTENT, true).apply {
+            isOutsideTouchable = true
+            isClippingEnabled = true
+            setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        }
+
+        fun action(id: Int, message: String) {
+            popupView.findViewById<View>(id).setOnClickListener {
+                Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
+                popupWindow.dismiss()
             }
-        }.show()
+        }
+
+        action(R.id.action_rename, "Rename ${book.name}")
+        action(R.id.action_duplicate, "Duplicate ${book.name}")
+        action(R.id.action_add_members, "Add Members to ${book.name}")
+        action(R.id.action_move, "Move ${book.name}")
+        action(R.id.action_delete, "Delete ${book.name}")
+
+        val xOffset = anchor.width - popupWidthPx
+        popupWindow.showAsDropDown(anchor, xOffset, 4)
     }
 
     private inner class BookAdapter(
@@ -254,7 +275,6 @@ class MainActivity : AppCompatActivity() {
             holder.name.text = book.name
             holder.meta.text = book.meta
             holder.balance.text = book.balance
-            holder.icon.text = book.name.firstOrNull()?.uppercaseChar()?.toString().orEmpty()
             holder.itemView.setOnClickListener { showBookDetails(book) }
             holder.menu.setOnClickListener { showBookMenu(it, book) }
         }
@@ -265,7 +285,6 @@ class MainActivity : AppCompatActivity() {
             val name: TextView = view.findViewById(R.id.book_name)
             val meta: TextView = view.findViewById(R.id.book_meta)
             val balance: TextView = view.findViewById(R.id.book_balance)
-            val icon: TextView = view.findViewById(R.id.book_icon)
             val menu: ImageButton = view.findViewById(R.id.book_menu)
         }
     }

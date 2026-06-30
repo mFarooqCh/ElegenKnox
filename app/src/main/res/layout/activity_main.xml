@@ -31,12 +31,27 @@
             android:paddingStart="20dp"
             android:paddingEnd="20dp">
 
+            <FrameLayout
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="@drawable/round_shape"
+                android:backgroundTint="#E0E7FF">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_book_decor"
+                    app:tint="#4F46E5" />
+            </FrameLayout>
+
             <!-- Business name + subtitle -->
             <LinearLayout
                 android:id="@+id/business_selector"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:layout_marginStart="10dp"
                 android:orientation="vertical"
                 android:clickable="true"
                 android:focusable="true"
@@ -48,19 +63,11 @@
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
 
-                    <ImageView
-                        android:id="@+id/business_icon"
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
-                        android:layout_marginEnd="8dp"
-                        android:src="@android:drawable/ic_menu_myplaces"
-                        app:tint="#2563EB" />
-
                     <TextView
                         android:id="@+id/business_title"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Ghosia Hotel"
+                        android:text="ElegenSol"
                         android:textColor="#0F172A"
                         android:textSize="17sp"
                         android:textStyle="bold"
@@ -72,7 +79,7 @@
                         android:layout_width="16dp"
                         android:layout_height="16dp"
                         android:layout_marginStart="4dp"
-                        android:src="@android:drawable/arrow_down_float"
+                        android:src="@drawable/ic_chevron_down"
                         app:tint="#6B7280" />
                 </LinearLayout>
 
@@ -84,6 +91,16 @@
                     android:textColor="#6B7280"
                     android:textSize="12sp" />
             </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/add_member_button"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Add Members"
+                android:padding="9dp"
+                android:src="@drawable/ic_person_add"
+                app:tint="#4F46E5" />
 
         </LinearLayout>
 
@@ -110,81 +127,165 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Blue hero card -->
+            <!-- Indigo hero card -->
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/hero_card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:backgroundTint="#2563EB"
+                android:backgroundTint="#4F46E5"
                 app:cardCornerRadius="24dp"
+                app:cardElevation="0dp">
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="22dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Basics of CashBook"
+                            android:textColor="#FFFFFF"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Learn to use cashbook"
+                            android:textColor="#E0E7FF"
+                            android:textSize="14sp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/know_more_button"
+                            android:layout_width="wrap_content"
+                            android:layout_height="40dp"
+                            android:layout_marginTop="16dp"
+                            android:paddingHorizontal="16dp"
+                            android:text="Know more"
+                            android:textAllCaps="false"
+                            android:textColor="#4F46E5"
+                            android:textStyle="bold"
+                            android:backgroundTint="#FFFFFF"
+                            app:icon="@android:drawable/ic_media_play"
+                            app:iconGravity="end"
+                            app:iconSize="14dp"
+                            app:iconTint="#4F46E5"
+                            app:cornerRadius="20dp" />
+                    </LinearLayout>
+
+                    <ImageButton
+                        android:id="@+id/hero_dismiss_button"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_gravity="top|end"
+                        android:layout_margin="6dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Dismiss"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_close"
+                        app:tint="#E0E7FF" />
+
+                    <ImageView
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:layout_gravity="end|bottom"
+                        android:layout_margin="18dp"
+                        android:alpha="0.9"
+                        android:src="@drawable/ic_book_decor"
+                        app:tint="#FFFFFF" />
+                </FrameLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Section header -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Your Books"
+                    android:textColor="#0F172A"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <ImageButton
+                    android:id="@+id/filter_books_button"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Filter"
+                    android:padding="6dp"
+                    android:src="@drawable/ic_filter"
+                    app:tint="#4F46E5" />
+
+                <ImageButton
+                    android:id="@+id/search_books_button"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="4dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Search"
+                    android:padding="6dp"
+                    android:src="@drawable/ic_search"
+                    app:tint="#4F46E5" />
+            </LinearLayout>
+
+            <!-- Tip card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/tip_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:backgroundTint="#EEF2FF"
+                app:cardCornerRadius="14dp"
                 app:cardElevation="0dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="22dp">
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="6dp"
+                    android:paddingVertical="6dp">
 
-                    <FrameLayout
-                        android:layout_width="44dp"
-                        android:layout_height="44dp"
-                        android:background="@drawable/round_shape"
-                        android:backgroundTint="#DCEAFE">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_gravity="center"
-                            android:text="✦"
-                            android:textColor="#2563EB"
-                            android:textSize="18sp" />
-                    </FrameLayout>
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_lightbulb"
+                        app:tint="#4F46E5" />
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:text="Elegen CashBook"
-                        android:textColor="#FFFFFF"
-                        android:textSize="18sp"
-                        android:textStyle="bold" />
+                        android:layout_weight="1"
+                        android:layout_marginStart="10dp"
+                        android:text="Tap to view your entries in this book"
+                        android:textColor="#4F46E5"
+                        android:textSize="13sp" />
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="Create books, track balances, and manage your cash flow in one clean place."
-                        android:textColor="#DCEAFE"
-                        android:textSize="14sp" />
+                    <ImageButton
+                        android:id="@+id/tip_dismiss_button"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Dismiss tip"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_close"
+                        app:tint="#9CA3AF" />
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Section header -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="YOUR BOOKS"
-                android:textAllCaps="true"
-                android:textColor="#0F172A"
-                android:textSize="16sp"
-                android:textStyle="bold" />
-
-            <!-- Tip card -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:backgroundTint="#F8FAFC"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:padding="14dp"
-                    android:text="Tip: keep each book focused on one purpose so balancing stays simple."
-                    android:textColor="#475569"
-                    android:textSize="14sp" />
             </com.google.android.material.card.MaterialCardView>
 
             <!-- Books RecyclerView -->
@@ -211,7 +312,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:background="#FFFFFF"
-        app:itemIconTint="#2563EB"
+        app:itemIconTint="#4F46E5"
         app:itemTextColor="#0F172A"
         app:labelVisibilityMode="labeled"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -224,18 +325,19 @@
     ═══════════════════════════════════════════ -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/add_book_button"
-        android:layout_width="wrap_content"
-        android:layout_height="52dp"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
         android:layout_marginEnd="20dp"
-        android:layout_marginBottom="12dp"
-        android:paddingHorizontal="18dp"
-        android:text="ADD BOOK"
-        android:textAllCaps="true"
-        android:textStyle="bold"
+        android:layout_marginBottom="16dp"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:backgroundTint="#4F46E5"
         app:icon="@android:drawable/ic_input_add"
-        app:iconSize="18dp"
-        app:iconPadding="6dp"
-        app:cornerRadius="20dp"
+        app:iconSize="24dp"
+        app:iconGravity="textStart"
+        app:iconPadding="0dp"
+        app:cornerRadius="28dp"
+        app:elevation="4dp"
         app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
         app:layout_constraintEnd_toEndOf="parent" />
 

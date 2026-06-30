@@ -18,10 +18,9 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="ADD BOOK"
-            android:textAllCaps="true"
+            android:text="Add New Book"
             android:textColor="#0F172A"
-            android:textSize="20sp"
+            android:textSize="18sp"
             android:textStyle="bold" />
 
         <ImageButton
@@ -31,17 +30,28 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Close"
             android:padding="8dp"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
-            app:tint="#6B7280" />
+            android:src="@drawable/ic_close"
+            app:tint="#111827" />
     </LinearLayout>
+
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginTop="12dp" android:background="#E5E7EB" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Enter Book Name"
+        android:textColor="#111827"
+        android:textSize="13sp"
+        android:textStyle="bold" />
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/book_name_layout"
         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:hint="ENTER BOOK NAME"
+        android:layout_marginTop="8dp"
+        app:boxStrokeColor="#4F46E5"
         app:boxCornerRadiusTopStart="16dp"
         app:boxCornerRadiusTopEnd="16dp"
         app:boxCornerRadiusBottomStart="16dp"
@@ -54,11 +64,19 @@
             android:inputType="textCapWords" />
     </com.google.android.material.textfield.TextInputLayout>
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:text="Suggestions"
+        android:textColor="#9CA3AF"
+        android:textSize="12sp" />
+
     <com.google.android.material.chip.ChipGroup
         android:id="@+id/book_suggestions"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="8dp"
         app:singleLine="false">
 
         <com.google.android.material.chip.Chip
@@ -66,37 +84,49 @@
             style="@style/Widget.Material3.Chip.Assist"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="June Expenses" />
+            android:text="June Expenses"
+            android:textColor="#4F46E5"
+            app:chipBackgroundColor="#EEF2FF"
+            app:chipStrokeWidth="0dp" />
 
         <com.google.android.material.chip.Chip
             android:id="@+id/chip_petty"
             style="@style/Widget.Material3.Chip.Assist"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Petty Cash Book" />
+            android:text="Petty Cash Book"
+            android:textColor="#4F46E5"
+            app:chipBackgroundColor="#EEF2FF"
+            app:chipStrokeWidth="0dp" />
 
         <com.google.android.material.chip.Chip
             android:id="@+id/chip_project"
             style="@style/Widget.Material3.Chip.Assist"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Project Book" />
+            android:text="Project Book"
+            android:textColor="#4F46E5"
+            app:chipBackgroundColor="#EEF2FF"
+            app:chipStrokeWidth="0dp" />
 
         <com.google.android.material.chip.Chip
             android:id="@+id/chip_client"
             style="@style/Widget.Material3.Chip.Assist"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Client Record" />
+            android:text="Client Record"
+            android:textColor="#4F46E5"
+            app:chipBackgroundColor="#EEF2FF"
+            app:chipStrokeWidth="0dp" />
     </com.google.android.material.chip.ChipGroup>
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/add_book_button"
         android:layout_width="match_parent"
         android:layout_height="52dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="24dp"
         android:enabled="false"
-        android:text="ADD BOOK"
+        android:text="ADD NEW BOOK"
         android:textAllCaps="true"
         android:textStyle="bold"
         android:backgroundTint="#F3F4F6"
@@ -104,5 +134,5 @@
         app:icon="@android:drawable/ic_input_add"
         app:iconSize="18dp"
         app:iconPadding="6dp"
-        app:cornerRadius="20dp" />
+        app:cornerRadius="16dp" />
 </LinearLayout>

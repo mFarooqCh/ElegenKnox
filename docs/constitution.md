@@ -1,16 +1,7 @@
-<!--
-Sync Impact Report
-- Version change: 1.0.0 -> 2.0.0
-- Modified principles: Android Device Control System Constitution -> Cashbook Constitution
-- Added sections: Purpose, Governance
-- Removed sections: None; previous device-enforcement guidance was replaced by cashbook-specific principles
-- Templates requiring updates: .specify/templates/plan-template.md (updated), .specify/templates/spec-template.md (updated), .specify/templates/tasks-template.md (updated)
-- Follow-up TODOs: None
--->
 # Constitution
 
 ## Purpose
-Build a reliable offline-first Android cashbook application for recording income and expenses in PKR with automatic cloud backup.
+Build a reliable offline-first Android cashbook application for recording income and expenses with automatic cloud backup.
 
 ## Core Principles
 

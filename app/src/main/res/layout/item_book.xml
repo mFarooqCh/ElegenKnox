@@ -1,30 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/book_item_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingVertical="12dp"
-    android:paddingEnd="4dp"
-    android:background="#FFFFFF">
+    android:layout_marginBottom="10dp"
+    android:padding="10dp"
+    android:background="@drawable/bg_book_item">
 
     <FrameLayout
         android:id="@+id/book_icon_container"
         android:layout_width="44dp"
         android:layout_height="44dp"
         android:background="@drawable/round_shape"
-        android:backgroundTint="#E8EAF6"
+        android:backgroundTint="#E0E7FF"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <TextView
+        <ImageView
             android:id="@+id/book_icon"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
             android:layout_gravity="center"
-            android:text="B"
-            android:textColor="#3949AB"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:src="@drawable/ic_book_decor"
+            app:tint="#4F46E5" />
     </FrameLayout>
 
     <TextView
@@ -55,8 +54,8 @@
         android:id="@+id/book_balance"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="PKR 0.00"
-        android:textColor="#111827"
+        android:text="  0.00"
+        android:textColor="#16A34A"
         android:textSize="16sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -69,10 +68,10 @@
         android:layout_height="40dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="More options"
-        android:padding="8dp"
-        android:src="@android:drawable/ic_menu_more"
+        android:padding="9dp"
+        android:src="@drawable/ic_more_vert"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:tint="#6B7280" />
+        app:tint="#4F46E5" />
 </androidx.constraintlayout.widget.ConstraintLayout>
