@@ -39,16 +39,17 @@
 **Goal:** all money math goes through `Money` (Long paisa, HALF_UP). Existing screens keep working, now numerically exact.
 
 **Checklist**
-- [ ] `core/money`: `@JvmInline value class Money(val paisa: Long)` + plus/minus/sum, `parse(String)` (input → paisa), `format()` (single display point), HALF_UP policy (spec §5).
-- [ ] Unit tests: parse/format round-trip, rounding cases (`0.005`), negative, large sums, overflow surfaced.
-- [ ] Replace `Entry.amount: Double`, `totalIn/totalOut: Double`, `DoubleArray` running balances in `BookDetailsActivity` with `Money`.
-- [ ] Input path: amount string → `Money.parse` (no `toDoubleOrNull` anywhere).
-- [ ] Lint/grep guard: no `Double`/`Float` in any money context (review checklist item).
+- [x] `core/money/Money.kt`: value class, plus/minus/unaryMinus (`*Exact` — overflow throws), `parse` (HALF_UP), `format` (whole → no decimals, else 2), `Iterable<Money>.sum()`.
+- [x] 34 JUnit5 tests green (parse/rounding/overflow/format/round-trip). JUnit5 platform wired (`useJUnitPlatform` + launcher + vintage engine for legacy JUnit4).
+- [x] `BookDetailsActivity`: `Entry.amount`, totals, running balances → `Money`; display via `format()` (was `toLong()` truncation — paisa now shown).
+- [x] `Money.parse` replaces `toDoubleOrNull`; added guard: amount must be > 0.
+- [x] Grep sweep: zero `Double`/`Float` in `app/src/main/java` (only doc comment).
 
 **Proof Gate P1**
-- [ ] All `core/money` tests green.
-- [ ] Manual: enter `0.1 + 0.2`-style amounts; totals exact (no `0.30000000000000004`), running balance correct.
-- [ ] **Regression:** P0 proof still passes.
+- [x] All `core/money` tests green (34 + 1 legacy).
+- [x] Built, installed, launched — crash buffer clean.
+- [ ] Manual: add entries `0.1` and `0.2` cash-in → Total In shows exactly `Rs 0.30`; running balance correct. **(user)**
+- [ ] **Regression:** P0 tap-through still good. **(user)**
 
 ---
 

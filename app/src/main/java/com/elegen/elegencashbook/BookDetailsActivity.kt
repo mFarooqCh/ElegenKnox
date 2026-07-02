@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import com.elegen.elegencashbook.core.money.Money
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
@@ -26,7 +27,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 data class Entry(
-    val amount: Double,
+    val amount: Money,
     val remark: String,
     val isCashIn: Boolean,
     val date: String,
@@ -36,8 +37,8 @@ data class Entry(
 class BookDetailsActivity : AppCompatActivity() {
 
     private val entries = mutableListOf<Entry>()
-    private var totalIn  = 0.0
-    private var totalOut = 0.0
+    private var totalIn  = Money.ZERO
+    private var totalOut = Money.ZERO
 
     private lateinit var tvNetBalance:      TextView
     private lateinit var tvEntriesInBook:   TextView
@@ -174,7 +175,8 @@ class BookDetailsActivity : AppCompatActivity() {
         fun collectAndSave(): Entry? {
             val amountStr = etAmount.text?.toString()?.trim() ?: ""
             if (amountStr.isEmpty()) { layoutAmount.error = "Enter amount"; return null }
-            val amount = amountStr.toDoubleOrNull() ?: run { layoutAmount.error = "Invalid amount"; return null }
+            val amount = Money.parse(amountStr) ?: run { layoutAmount.error = "Invalid amount"; return null }
+            if (!amount.isPositive) { layoutAmount.error = "Amount must be greater than 0"; return null }
             layoutAmount.error = null
             return Entry(amount, etRemark.text?.toString()?.trim() ?: "", isCashIn,
                 tvDate.text.toString(), tvTime.text.toString())
@@ -208,10 +210,10 @@ class BookDetailsActivity : AppCompatActivity() {
     private fun refreshSummary() {
         val net = totalIn - totalOut
         val count = entries.size
-        tvNetBalance.text    = "Rs ${net.toLong()}"
+        tvNetBalance.text    = "Rs ${net.format()}"
         tvEntriesInBook.text = "$count ${if (count == 1) "entry" else "entries"} this book"
-        tvTotalIn.text       = "Rs ${totalIn.toLong()}"
-        tvTotalOut.text      = "Rs ${totalOut.toLong()}"
+        tvTotalIn.text       = "Rs ${totalIn.format()}"
+        tvTotalOut.text      = "Rs ${totalOut.format()}"
         tvEntryCount.text = "Showing $count ${if (count == 1) "entry" else "entries"}"
         tvDateHeader.text = entries.firstOrNull()?.date ?: ""
     }
@@ -223,8 +225,8 @@ class BookDetailsActivity : AppCompatActivity() {
         fun px(dp: Int) = (dp * resources.displayMetrics.density).toInt()
 
         // entries[0] is newest; compute running balance in chronological order, oldest first.
-        val runningBalances = DoubleArray(entries.size)
-        var running = 0.0
+        val runningBalances = Array(entries.size) { Money.ZERO }
+        var running = Money.ZERO
         for (i in entries.indices.reversed()) {
             val entry = entries[i]
             running += if (entry.isCashIn) entry.amount else -entry.amount
@@ -308,14 +310,14 @@ class BookDetailsActivity : AppCompatActivity() {
             }
             val sign = if (entry.isCashIn) "+" else "-"
             amountCol.addView(TextView(this).apply {
-                text = "$sign Rs ${entry.amount.toLong()}"
+                text = "$sign Rs ${entry.amount.format()}"
                 textSize = 15f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(Color.parseColor(accentColor))
                 gravity = Gravity.END
             })
             amountCol.addView(TextView(this).apply {
-                text = "Bal Rs ${runningBalances[index].toLong()}"
+                text = "Bal Rs ${runningBalances[index].format()}"
                 textSize = 12f
                 setTextColor(Color.parseColor("#6B7280"))
                 gravity = Gravity.END

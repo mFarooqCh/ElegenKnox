@@ -20,6 +20,7 @@ workManager = "2.10.0"
 supabase = "3.0.3"
 ktor = "3.0.3"
 junit5 = "5.11.4"
+junitPlatform = "1.11.4"
 mockk = "1.13.14"
 turbine = "1.2.0"
 robolectric = "4.14.1"
@@ -62,6 +63,7 @@ junit5-api = { group = "org.junit.jupiter", name = "junit-jupiter-api", version.
 junit5-engine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junit5" }
 junit5-params = { group = "org.junit.jupiter", name = "junit-jupiter-params", version.ref = "junit5" }
 junit-vintage-engine = { group = "org.junit.vintage", name = "junit-vintage-engine", version.ref = "junit5" }
+junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher", version.ref = "junitPlatform" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
