@@ -2,43 +2,46 @@ package com.elegen.elegencashbook
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
-import android.content.Context
 import android.os.Bundle
 import android.view.Gravity
+import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
-import android.view.LayoutInflater
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.elegen.elegencashbook.core.money.Money
+import com.elegen.elegencashbook.feature.book.BookDetailsUiEvent
+import com.elegen.elegencashbook.feature.book.BookDetailsUiState
+import com.elegen.elegencashbook.feature.book.BookDetailsViewModel
+import com.elegen.elegencashbook.feature.book.EntryItem
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
+import dagger.hilt.android.AndroidEntryPoint
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.launch
 
-data class Entry(
-    val amount: Money,
-    val remark: String,
-    val isCashIn: Boolean,
-    val date: String,
-    val time: String
-)
-
+@AndroidEntryPoint
 class BookDetailsActivity : AppCompatActivity() {
 
-    private val entries = mutableListOf<Entry>()
-    private var totalIn  = Money.ZERO
-    private var totalOut = Money.ZERO
+    private val viewModel: BookDetailsViewModel by viewModels()
 
     private lateinit var tvNetBalance:      TextView
     private lateinit var tvEntriesInBook:   TextView
@@ -63,7 +66,7 @@ class BookDetailsActivity : AppCompatActivity() {
 
         // ── Toolbar ──────────────────────────────────────────────────────
         findViewById<TextView>(R.id.toolbar_title).text =
-            intent.getStringExtra("book_name") ?: "June entries"
+            intent.getStringExtra("book_name") ?: "Book"
         findViewById<TextView>(R.id.toolbar_subtitle).text =
             intent.getStringExtra("book_meta") ?: "Add Member, Book Activity etc"
 
@@ -86,7 +89,11 @@ class BookDetailsActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.btn_cash_in).setOnClickListener  { showEntryDialog(true)  }
         findViewById<MaterialButton>(R.id.btn_cash_out).setOnClickListener { showEntryDialog(false) }
 
-        refreshSummary()
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.state.collect { render(it) }
+            }
+        }
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
@@ -172,23 +179,30 @@ class BookDetailsActivity : AppCompatActivity() {
         val etRemark = view.findViewById<TextInputEditText>(R.id.et_remark)
         val layoutAmount = view.findViewById<TextInputLayout>(R.id.layout_amount)
 
-        fun collectAndSave(): Entry? {
+        // Field validation only; all persistence goes through the ViewModel.
+        fun collectAndSend(): Boolean {
             val amountStr = etAmount.text?.toString()?.trim() ?: ""
-            if (amountStr.isEmpty()) { layoutAmount.error = "Enter amount"; return null }
-            val amount = Money.parse(amountStr) ?: run { layoutAmount.error = "Invalid amount"; return null }
-            if (!amount.isPositive) { layoutAmount.error = "Amount must be greater than 0"; return null }
+            if (amountStr.isEmpty()) { layoutAmount.error = "Enter amount"; return false }
+            val amount = Money.parse(amountStr) ?: run { layoutAmount.error = "Invalid amount"; return false }
+            if (!amount.isPositive) { layoutAmount.error = "Amount must be greater than 0"; return false }
             layoutAmount.error = null
-            return Entry(amount, etRemark.text?.toString()?.trim() ?: "", isCashIn,
-                tvDate.text.toString(), tvTime.text.toString())
+            viewModel.onEvent(
+                BookDetailsUiEvent.SaveEntry(
+                    amount = amount,
+                    description = etRemark.text?.toString()?.trim() ?: "",
+                    isCashIn = isCashIn,
+                    entryAt = cal.timeInMillis,
+                )
+            )
+            return true
         }
 
         view.findViewById<MaterialButton>(R.id.btn_save).setOnClickListener {
-            collectAndSave()?.let { entry -> saveEntry(entry); dialog.dismiss() }
+            if (collectAndSend()) dialog.dismiss()
         }
 
         view.findViewById<MaterialButton>(R.id.btn_save_add_new).setOnClickListener {
-            collectAndSave()?.let { entry ->
-                saveEntry(entry)
+            if (collectAndSend()) {
                 dialog.dismiss()
                 showEntryDialog(isCashIn)   // reopen fresh
             }
@@ -198,42 +212,41 @@ class BookDetailsActivity : AppCompatActivity() {
         etAmount.requestFocus()
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    private fun saveEntry(entry: Entry) {
-        entries.add(0, entry)
-        if (entry.isCashIn) totalIn += entry.amount else totalOut += entry.amount
-        refreshSummary()
-        refreshEntryList()
+    private fun confirmDelete(entry: EntryItem) {
+        AlertDialog.Builder(this)
+            .setTitle("Delete entry?")
+            .setMessage("You can undo right after deleting.")
+            .setPositiveButton("Delete") { _, _ ->
+                viewModel.onEvent(BookDetailsUiEvent.DeleteEntry(entry.id))
+                Snackbar.make(entryListContainer, "Entry deleted", Snackbar.LENGTH_LONG)
+                    .setAction("Undo") {
+                        viewModel.onEvent(BookDetailsUiEvent.RestoreEntry(entry.id))
+                    }
+                    .show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    private fun refreshSummary() {
-        val net = totalIn - totalOut
-        val count = entries.size
-        tvNetBalance.text    = "Rs ${net.format()}"
+    private fun render(state: BookDetailsUiState) {
+        val count = state.entryCount
+        tvNetBalance.text    = "Rs ${state.netText}"
         tvEntriesInBook.text = "$count ${if (count == 1) "entry" else "entries"} this book"
-        tvTotalIn.text       = "Rs ${totalIn.format()}"
-        tvTotalOut.text      = "Rs ${totalOut.format()}"
-        tvEntryCount.text = "Showing $count ${if (count == 1) "entry" else "entries"}"
-        tvDateHeader.text = entries.firstOrNull()?.date ?: ""
+        tvTotalIn.text       = "Rs ${state.totalInText}"
+        tvTotalOut.text      = "Rs ${state.totalOutText}"
+        tvEntryCount.text    = "Showing $count ${if (count == 1) "entry" else "entries"}"
+        tvDateHeader.text    = state.dateHeader
+        refreshEntryList(state.entries)
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    private fun refreshEntryList() {
+    private fun refreshEntryList(entries: List<EntryItem>) {
         entryListContainer.removeAllViews()
 
         fun px(dp: Int) = (dp * resources.displayMetrics.density).toInt()
 
-        // entries[0] is newest; compute running balance in chronological order, oldest first.
-        val runningBalances = Array(entries.size) { Money.ZERO }
-        var running = Money.ZERO
-        for (i in entries.indices.reversed()) {
-            val entry = entries[i]
-            running += if (entry.isCashIn) entry.amount else -entry.amount
-            runningBalances[i] = running
-        }
-
-        entries.forEachIndexed { index, entry ->
+        entries.forEach { entry ->
 
             // ── Divider ──
             entryListContainer.addView(View(this).apply {
@@ -251,6 +264,7 @@ class BookDetailsActivity : AppCompatActivity() {
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT)
                 setBackgroundColor(Color.WHITE)
+                setOnLongClickListener { confirmDelete(entry); true }
             }
 
             val accentColor = if (entry.isCashIn) "#16A34A" else "#DC2626"
@@ -276,7 +290,7 @@ class BookDetailsActivity : AppCompatActivity() {
                 }
             }
             middleCol.addView(TextView(this).apply {
-                text = entry.remark.ifEmpty { if (entry.isCashIn) "Cash In" else "Cash Out" }
+                text = entry.title
                 textSize = 15f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(Color.parseColor("#111827"))
@@ -297,7 +311,7 @@ class BookDetailsActivity : AppCompatActivity() {
                 setPadding(px(8), px(2), px(8), px(2))
             })
             metaRow.addView(TextView(this).apply {
-                text = "  Entry by You · ${entry.time}"
+                text = "  Entry by You · ${entry.timeText}"
                 textSize = 12f
                 setTextColor(Color.parseColor("#6B7280"))
             })
@@ -310,14 +324,14 @@ class BookDetailsActivity : AppCompatActivity() {
             }
             val sign = if (entry.isCashIn) "+" else "-"
             amountCol.addView(TextView(this).apply {
-                text = "$sign Rs ${entry.amount.format()}"
+                text = "$sign Rs ${entry.amountText}"
                 textSize = 15f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(Color.parseColor(accentColor))
                 gravity = Gravity.END
             })
             amountCol.addView(TextView(this).apply {
-                text = "Bal Rs ${runningBalances[index].format()}"
+                text = "Bal Rs ${entry.runningBalanceText}"
                 textSize = 12f
                 setTextColor(Color.parseColor("#6B7280"))
                 gravity = Gravity.END

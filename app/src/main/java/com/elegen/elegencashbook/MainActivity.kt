@@ -12,46 +12,41 @@ import android.widget.ImageView
 import android.widget.PopupWindow
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.elegen.elegencashbook.feature.main.BookItem
+import com.elegen.elegencashbook.feature.main.BusinessItem
+import com.elegen.elegencashbook.feature.main.MainUiEvent
+import com.elegen.elegencashbook.feature.main.MainUiState
+import com.elegen.elegencashbook.feature.main.MainViewModel
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.chip.Chip
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
-import androidx.activity.enableEdgeToEdge
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
-    private val businesses = listOf(
-        Business("Studio House", "Owner", 3, true),
-        Business("Northwind Co", "Manager", 2, false),
-        Business("Blue Oak", "Viewer", 1, false)
-    )
-
-    private val books = mutableListOf(
-        Book("June Expenses", "Updated today", "  24,500"),
-        Book("Petty Cash Book", "Created 2 days ago", "  8,200"),
-        Book("Project Book", "Created 1 week ago", "  42,100")
-    )
+    private val viewModel: MainViewModel by viewModels()
 
     private lateinit var booksRecyclerView: RecyclerView
     private lateinit var booksAdapter: BookAdapter
     private lateinit var businessTitle: TextView
-    private var selectedBusinessIndex = 0
 
-    private fun showBookDetails(book: Book) {
-        val intent = Intent(this, BookDetailsActivity::class.java).apply {
-            putExtra("book_name", book.name)
-            putExtra("book_meta", book.meta)
-            putExtra("book_balance", book.balance)
-        }
-        startActivity(intent)
-    }
+    private var uiState = MainUiState()
+    private var businessSheetAdapter: BusinessAdapter? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,20 +62,23 @@ class MainActivity : AppCompatActivity() {
         }
 
         businessTitle = findViewById(R.id.business_title)
-        //val inviteButton = findViewById<ImageButton>(R.id.invite_button)
         val addBookButton = findViewById<MaterialButton>(R.id.add_book_button)
         val businessSelector = findViewById<View>(R.id.business_selector)
         booksRecyclerView = findViewById(R.id.books_list)
 
-        booksAdapter = BookAdapter(books)
+        booksAdapter = BookAdapter()
         booksRecyclerView.layoutManager = LinearLayoutManager(this)
         booksRecyclerView.adapter = booksAdapter
 
-        updateBusinessSelection()
-
         businessSelector.setOnClickListener { showBusinessSheet() }
-        //inviteButton.setOnClickListener { /* no-op for visual parity */ }
-        addBookButton.setOnClickListener { showAddBookSheet() }
+        addBookButton.setOnClickListener {
+            if (uiState.activeBusiness == null) {
+                Toast.makeText(this, "Create a business first", Toast.LENGTH_SHORT).show()
+                showBusinessSheet()
+            } else {
+                showAddBookSheet()
+            }
+        }
 
         findViewById<View>(R.id.tip_dismiss_button).setOnClickListener {
             findViewById<View>(R.id.tip_card).visibility = View.GONE
@@ -88,11 +86,28 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.hero_dismiss_button).setOnClickListener {
             findViewById<View>(R.id.hero_card).visibility = View.GONE
         }
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.state.collect { render(it) }
+            }
+        }
     }
 
-    private fun updateBusinessSelection() {
-        val business = businesses[selectedBusinessIndex]
-        businessTitle.text = business.name
+    private fun render(state: MainUiState) {
+        uiState = state
+        businessTitle.text = state.activeBusiness?.name ?: "Add a business"
+        booksAdapter.submit(state.books)
+        businessSheetAdapter?.submit(state.businesses)
+    }
+
+    private fun showBookDetails(book: BookItem) {
+        val intent = Intent(this, BookDetailsActivity::class.java).apply {
+            putExtra("book_id", book.id)
+            putExtra("book_name", book.name)
+            putExtra("book_meta", book.metaText)
+        }
+        startActivity(intent)
     }
 
     private fun showBusinessSheet() {
@@ -106,10 +121,15 @@ class MainActivity : AppCompatActivity() {
         addBusinessButton.isEnabled = true
         addBusinessButton.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#2563EB"))
         addBusinessButton.setTextColor(android.graphics.Color.WHITE)
-        businessList.adapter = BusinessAdapter(businesses) { index ->
-            selectedBusinessIndex = index
-            updateBusinessSelection()
+
+        val adapter = BusinessAdapter { business ->
+            viewModel.onEvent(MainUiEvent.SelectBusiness(business.id))
+            dialog.dismiss()
         }
+        adapter.submit(uiState.businesses)
+        businessList.adapter = adapter
+        businessSheetAdapter = adapter
+        dialog.setOnDismissListener { businessSheetAdapter = null }
 
         closeButton.setOnClickListener { dialog.dismiss() }
         addBusinessButton.setOnClickListener {
@@ -164,8 +184,7 @@ class MainActivity : AppCompatActivity() {
         addBookButton.setOnClickListener {
             val name = bookNameInput.text?.toString()?.trim().orEmpty()
             if (name.isNotBlank()) {
-                books.add(0, Book(name, "Added just now", "  0.00"))
-                booksAdapter.notifyItemInserted(0)
+                viewModel.onEvent(MainUiEvent.AddBook(name))
                 booksRecyclerView.scrollToPosition(0)
                 dialog.dismiss()
             } else {
@@ -179,23 +198,17 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private data class Business(
-        val name: String,
-        val role: String,
-        val bookCount: Int,
-        val isSelected: Boolean
-    )
-
-    private data class Book(
-        val name: String,
-        val meta: String,
-        val balance: String
-    )
-
     private inner class BusinessAdapter(
-        private val items: List<Business>,
-        private val onSelected: (Int) -> Unit
+        private val onSelected: (BusinessItem) -> Unit
     ) : RecyclerView.Adapter<BusinessAdapter.BusinessViewHolder>() {
+
+        private val items = mutableListOf<BusinessItem>()
+
+        fun submit(newItems: List<BusinessItem>) {
+            items.clear()
+            items.addAll(newItems)
+            notifyDataSetChanged()
+        }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BusinessViewHolder {
             val view = LayoutInflater.from(parent.context).inflate(R.layout.item_business, parent, false)
@@ -205,9 +218,9 @@ class MainActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: BusinessViewHolder, position: Int) {
             val business = items[position]
             holder.name.text = business.name
-            holder.role.text = business.role
-            holder.count.text = "${business.bookCount} books"
-            if (position == selectedBusinessIndex) {
+            holder.role.text = business.roleLabel
+            holder.count.text = "${business.bookCount} ${if (business.bookCount == 1) "book" else "books"}"
+            if (business.isActive) {
                 holder.selected.setImageResource(R.drawable.ic_check_circle)
                 holder.selected.setColorFilter(0xFF16A34A.toInt())
             } else {
@@ -228,14 +241,14 @@ class MainActivity : AppCompatActivity() {
                 view.setOnClickListener {
                     val position = adapterPosition
                     if (position != RecyclerView.NO_POSITION) {
-                        onSelected(position)
+                        onSelected(items[position])
                     }
                 }
             }
         }
     }
 
-    private fun showBookMenu(anchor: View, book: Book) {
+    private fun showBookMenu(anchor: View, book: BookItem) {
         val popupWidthPx = (180 * resources.displayMetrics.density).toInt()
         val popupView = LayoutInflater.from(this).inflate(R.layout.popup_book_menu, null)
         val popupWindow = PopupWindow(popupView, popupWidthPx, ViewGroup.LayoutParams.WRAP_CONTENT, true).apply {
@@ -261,9 +274,15 @@ class MainActivity : AppCompatActivity() {
         popupWindow.showAsDropDown(anchor, xOffset, 4)
     }
 
-    private inner class BookAdapter(
-        private val items: MutableList<Book>
-    ) : RecyclerView.Adapter<BookAdapter.BookViewHolder>() {
+    private inner class BookAdapter : RecyclerView.Adapter<BookAdapter.BookViewHolder>() {
+
+        private val items = mutableListOf<BookItem>()
+
+        fun submit(newItems: List<BookItem>) {
+            items.clear()
+            items.addAll(newItems)
+            notifyDataSetChanged()
+        }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BookViewHolder {
             val view = LayoutInflater.from(parent.context).inflate(R.layout.item_book, parent, false)
@@ -273,8 +292,8 @@ class MainActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: BookViewHolder, position: Int) {
             val book = items[position]
             holder.name.text = book.name
-            holder.meta.text = book.meta
-            holder.balance.text = book.balance
+            holder.meta.text = book.metaText
+            holder.balance.text = book.balanceText
             holder.itemView.setOnClickListener { showBookDetails(book) }
             holder.menu.setOnClickListener { showBookMenu(it, book) }
         }

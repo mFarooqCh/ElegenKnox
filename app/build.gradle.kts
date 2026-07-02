@@ -1,5 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
 }
 
 android {
@@ -40,7 +42,12 @@ android {
 
     testOptions {
         unitTests.all { it.useJUnitPlatform() }
+        unitTests.isIncludeAndroidResources = true // Robolectric DAO tests
     }
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {
@@ -54,8 +61,19 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    // P2: offline-first persistence (spec §7) + DI + local prefs
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.androidx.datastore.preferences)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
+    // DAO tests on JVM (JUnit4 via vintage engine)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
     // JUnit5 (spec §13); vintage engine keeps legacy JUnit4 tests running
     testImplementation(libs.junit5.api)
     testImplementation(libs.junit5.params)

@@ -2,6 +2,7 @@ package com.elegen.elegencashbook.core.logging
 
 import android.util.Log
 import com.elegen.elegencashbook.BuildConfig
+import javax.inject.Inject
 
 /**
  * Single logging facade (spec §10). Feature code must use this — never android.util.Log directly.
@@ -18,7 +19,7 @@ interface Logger {
 }
 
 /** Default implementation backed by logcat. Injected via Hilt from P2 on; usable directly until then. */
-class AndroidLogger : Logger {
+class AndroidLogger @Inject constructor() : Logger {
     override fun debug(tag: String, message: String) {
         if (BuildConfig.DEBUG) Log.d(tag, message)
     }

@@ -11,9 +11,9 @@ constraintlayout = "2.1.4"
 # --- P0 additions (see docs/implementation_plan.md) ---
 coroutines = "1.9.0"
 lifecycle = "2.8.7"
-room = "2.6.1"
-ksp = "2.1.0-1.0.29"
-hilt = "2.53.1"
+room = "2.8.4"
+ksp = "2.3.9"
+hilt = "2.60"
 datastore = "1.1.1"
 tink = "1.15.0"
 workManager = "2.10.0"
@@ -23,7 +23,8 @@ junit5 = "5.11.4"
 junitPlatform = "1.11.4"
 mockk = "1.13.14"
 turbine = "1.2.0"
-robolectric = "4.14.1"
+robolectric = "4.16.1"
+androidxTestCore = "1.7.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -67,6 +68,7 @@ junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+androidx-test-core = { group = "androidx.test", name = "core-ktx", version.ref = "androidxTestCore" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

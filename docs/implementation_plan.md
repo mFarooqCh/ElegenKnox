@@ -58,22 +58,24 @@
 **Goal:** data survives restart. In-memory lists die. Every existing screen re-wired to ViewModel + Room through the full spec layering. **This phase establishes the UI⇄VM contract for all future phases.**
 
 **Checklist**
-- [ ] Room schema (spec §7): `Business`, `Book`, `Transaction`, `Category` (minimal), each with sync envelope columns (`version`, `updatedAt`, `deviceId`, `deletedAt`, `syncState`) — filled locally for now.
-- [ ] Indexes per spec §7.
-- [ ] Domain models (pure Kotlin) + mappers entity⇄domain (spec §4 rules 1–3).
-- [ ] Repository interfaces in `domain/repository`; Room-only impls in `data/repository`; Hilt binds (rule 4). Flows of domain models only (rule 5).
-- [ ] Use cases: `CreateBusiness`, `CreateBook`, `AddTransaction`, `UpdateTransaction`, `DeleteTransaction` (soft delete), `GetBalance`, `ListBooks`, `ListMyBusinesses`, `SwitchBusiness` (local active-business in DataStore).
-- [ ] ViewModels: `MainViewModel` (businesses+books, active business), `AddBusinessViewModel`, `BookDetailsViewModel` (entries, totals, running balance). Each: `StateFlow<UiState>` + `onEvent(UiEvent)`.
-- [ ] Re-wire `MainActivity`, `AddBusinessActivity`, `BookDetailsActivity` + bottom sheets/dialog to ViewModels. Delete all in-memory `mutableListOf` state. UI classes contain **zero** business logic.
-- [ ] Soft-delete + restore path for entries (tombstone) working locally.
-- [ ] Unit tests: use cases + balance math with fake repository; DAO tests (Robolectric/instrumented).
+- [x] Room schema (spec §7): `Business`, `Book`, `Transaction`, `Category` (minimal), each with sync envelope columns (`version`, `updatedAt`, `deviceId`, `deletedAt`, `syncState` via `@Embedded SyncEnvelope`) — filled locally for now. Schema exported to `app/schemas/` (v1). Room 2.8.4 + KSP 2.3.9 + Hilt 2.60 wired on AGP 9.2 built-in Kotlin.
+- [x] Indexes per spec §7: `Transaction(bookId, createdAt)`, `Transaction(bookId, type)`, `Book(businessId)`.
+- [x] Domain models (pure Kotlin) + mappers entity⇄domain (spec §4 rules 1–3).
+- [x] Repository interfaces in `domain/repository`; Room-only impls in `data/repository`; Hilt binds in `data/di` (rule 4). Flows of domain models only (rule 5). Every write stamps the sync envelope (version++, updatedAt, deviceId, PENDING) — P4-ready.
+- [x] Use cases: `CreateBusiness`, `CreateBook`, `AddTransaction`, `UpdateTransaction`, `DeleteTransaction` (soft delete), `RestoreTransaction`, `GetBalance`, `ListBooks`, `ListMyBusinesses`, `SwitchBusiness` + `ObserveActiveBusinessId` (active-business + deviceId in DataStore).
+- [x] ViewModels: `MainViewModel` (businesses+books, active business), `AddBusinessViewModel`, `BookDetailsViewModel` (entries, totals, running balance). Each: `StateFlow<UiState>` + `onEvent(UiEvent)`.
+- [x] Re-wired `MainActivity`, `AddBusinessActivity`, `BookDetailsActivity` + bottom sheets/dialog to ViewModels. All in-memory state deleted (adapters keep render buffers only). UI classes: zero business logic (amount field validation via `core/money` stays for inline errors; use case re-guards).
+- [x] Soft-delete + restore for entries (tombstone): long-press row → confirm → delete; snackbar Undo → restore.
+- [x] Unit tests: 8 use-case/balance tests (fake repo, exact-paisa, overflow-throws, delete/restore) + 5 DAO tests (Robolectric 4.16.1 on JVM via vintage engine: counts/balances exclude tombstones, chronological order, zero-not-null empty balance). 48 total green.
 
 **Proof Gate P2**
-- [ ] Create business → book → 5 entries → **force-kill app** → reopen: everything intact, balances identical.
-- [ ] Switch between two businesses; each shows only its own books. Active business survives restart.
-- [ ] Delete entry → restore → balance correct at each step.
-- [ ] Grep proof: no `Room`/`Dao` import outside `data/`; no repository import in any Activity.
-- [ ] **Regression:** P0–P1 proofs pass.
+- [ ] Create business → book → 5 entries → **force-kill app** → reopen: everything intact, balances identical. **(user — device offline)**
+- [ ] Switch between two businesses; each shows only its own books. Active business survives restart. **(user)**
+- [ ] Delete entry (long-press) → Undo restore → balance correct at each step. **(user)**
+- [x] Grep proof: no `Room`/`Dao` import outside `data/`; no repository import in any Activity; no state `mutableListOf` in UI.
+- [ ] **Regression:** P0–P1 proofs pass. **(user)**
+
+> Device note: wireless adb dropped — install/smoke pending reconnect (`adb pair`/USB), then `gradlew installDebug`.
 
 ---
 
