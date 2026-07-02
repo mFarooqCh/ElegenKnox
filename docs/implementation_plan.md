@@ -21,15 +21,16 @@
 **Goal:** current app still runs; build system ready for everything that follows. No feature change.
 
 **Checklist**
-- [ ] Version catalog: add Kotlin coroutines, Room (+ksp), Hilt (+ksp), DataStore, Tink, WorkManager, supabase-kt, JUnit5/MockK/Turbine, Robolectric. Do **not** wire them into code yet — just resolvable.
-- [ ] Verify/fix `namespace` vs package mismatch (`com.elegen.elegencashbook` code vs `elegenknox` folders) — one canonical package.
-- [ ] Add `INTERNET` permission to manifest (needed from P3; harmless now).
-- [ ] `Logger` facade in `core/logging` (debug gated by `BuildConfig.DEBUG`); replace any direct `Log.*` calls.
-- [ ] CI-able check: `./gradlew assembleDebug test` green locally.
+- [x] Version catalog: coroutines, lifecycle, Room, KSP, Hilt, DataStore, Tink, WorkManager, supabase-kt+ktor, JUnit5/MockK/Turbine/Robolectric added. Coroutines+lifecycle wired; rest catalog-only until their phase (resolvability finally proven when wired).
+- [x] Package dirs `elegenknox` → `elegencashbook` (git mv, 5 files); matches declared package + namespace.
+- [x] `INTERNET` permission added.
+- [x] `Logger` facade in `core/logging` (`AndroidLogger`, debug gated by `BuildConfig.DEBUG`; `buildConfig=true` enabled). No pre-existing `Log.*` calls to replace.
+- [x] `./gradlew assembleDebug testDebugUnitTest` green (2026-07-03).
 
 **Proof Gate P0**
-- [ ] `assembleDebug` + `test` pass.
-- [ ] Install on device: create business → create book → add cash-in/cash-out entries → balances shown exactly as before.
+- [x] `assembleDebug` + unit tests pass.
+- [x] Installed on device; MainActivity resumed, crash buffer clean.
+- [ ] Manual tap-through: create business → create book → add cash-in/cash-out entries → balances exactly as before. **(user)**
 
 ---
 
