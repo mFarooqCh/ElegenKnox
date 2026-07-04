@@ -14,6 +14,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -23,7 +24,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.elegen.elegencashbook.data.remote.supabase.SupabaseClientHolder
+import com.elegen.elegencashbook.data.remote.supabase.AuthDeepLinkHandler
 import com.elegen.elegencashbook.feature.main.BookItem
 import com.elegen.elegencashbook.feature.main.BusinessItem
 import com.elegen.elegencashbook.feature.main.MainUiEvent
@@ -32,10 +33,10 @@ import com.elegen.elegencashbook.feature.main.MainViewModel
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.chip.Chip
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import dagger.hilt.android.AndroidEntryPoint
-import io.github.jan.supabase.auth.handleDeeplinks
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -44,7 +45,7 @@ class MainActivity : AppCompatActivity() {
 
     private val viewModel: MainViewModel by viewModels()
 
-    @Inject lateinit var supabaseClientHolder: SupabaseClientHolder
+    @Inject lateinit var authDeepLinkHandler: AuthDeepLinkHandler
 
     private lateinit var booksRecyclerView: RecyclerView
     private lateinit var booksAdapter: BookAdapter
@@ -138,10 +139,9 @@ class MainActivity : AppCompatActivity() {
 
     /** Email-confirm / magic-link redirect lands here instead of a bare browser page. */
     private fun handleAuthDeepLink(intent: Intent) {
-        val client = supabaseClientHolder.client ?: return
-        client.handleDeeplinks(
+        authDeepLinkHandler.handle(
             intent = intent,
-            onSessionSuccess = { Toast.makeText(this, "Signed in", Toast.LENGTH_SHORT).show() },
+            onSuccess = { Toast.makeText(this, "Signed in", Toast.LENGTH_SHORT).show() },
             onError = { Toast.makeText(this, "Sign-in link invalid or expired", Toast.LENGTH_SHORT).show() },
         )
     }
@@ -217,7 +217,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun confirmWipe() {
-        androidx.appcompat.app.AlertDialog.Builder(this)
+        AlertDialog.Builder(this)
             .setTitle("Remove all local data?")
             .setMessage("This signs you out and deletes every business, book and entry stored on this device. This cannot be undone here.")
             .setPositiveButton("Delete everything") { _, _ ->
@@ -415,7 +415,7 @@ class MainActivity : AppCompatActivity() {
             setPadding(padding, padding / 2, padding, 0)
             addView(input)
         }
-        androidx.appcompat.app.AlertDialog.Builder(this)
+        AlertDialog.Builder(this)
             .setTitle("Rename book")
             .setView(container)
             .setPositiveButton("Save") { _, _ ->
@@ -427,12 +427,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun confirmDeleteBook(book: BookItem) {
-        androidx.appcompat.app.AlertDialog.Builder(this)
+        AlertDialog.Builder(this)
             .setTitle("Delete \"${book.name}\"?")
             .setMessage("You can undo right after deleting.")
             .setPositiveButton("Delete") { _, _ ->
                 viewModel.onEvent(MainUiEvent.DeleteBook(book.id))
-                com.google.android.material.snackbar.Snackbar.make(booksRecyclerView, "Book deleted", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                Snackbar.make(booksRecyclerView, "Book deleted", Snackbar.LENGTH_LONG)
                     .setAction("Undo") { viewModel.onEvent(MainUiEvent.RestoreBook(book.id)) }
                     .show()
             }
@@ -447,7 +447,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         val names = targets.map { it.name }.toTypedArray()
-        androidx.appcompat.app.AlertDialog.Builder(this)
+        AlertDialog.Builder(this)
             .setTitle("Move \"${book.name}\" to")
             .setItems(names) { _, index ->
                 viewModel.onEvent(MainUiEvent.MoveBook(book.id, targets[index].id))

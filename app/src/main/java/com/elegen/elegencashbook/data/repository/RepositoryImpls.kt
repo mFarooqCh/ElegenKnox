@@ -16,7 +16,8 @@ import com.elegen.elegencashbook.domain.model.Business
 import com.elegen.elegencashbook.domain.model.BusinessOverview
 import com.elegen.elegencashbook.domain.model.EntryType
 import com.elegen.elegencashbook.domain.model.Transaction
-import com.elegen.elegencashbook.data.identity.IdentityManager
+import androidx.room.withTransaction
+import com.elegen.elegencashbook.data.identity.ActiveIdentity
 import com.elegen.elegencashbook.data.local.db.AppDatabase
 import com.elegen.elegencashbook.domain.repository.BookRepository
 import com.elegen.elegencashbook.domain.repository.BusinessRepository
@@ -62,7 +63,7 @@ private fun SyncEnvelope.bumped(deviceId: String, now: Long, deletedAt: Long? = 
 class BusinessRepositoryImpl @Inject constructor(
     private val dao: BusinessDao,
     private val prefs: AppPreferences,
-    private val identity: IdentityManager,
+    private val identity: ActiveIdentity,
 ) : BusinessRepository {
 
     // Re-subscribes on every identity change (login/logout) so the visible set is always the
@@ -89,10 +90,11 @@ class BusinessRepositoryImpl @Inject constructor(
 
 @Singleton
 class BookRepositoryImpl @Inject constructor(
+    private val db: AppDatabase,
     private val dao: BookDao,
     private val transactionDao: TransactionDao,
     private val prefs: AppPreferences,
-    private val identity: IdentityManager,
+    private val identity: ActiveIdentity,
 ) : BookRepository {
 
     // Scoped by businessId; access to the business is already the identity gate (BusinessRepository).
@@ -114,32 +116,36 @@ class BookRepositoryImpl @Inject constructor(
         return entity.toDomain()
     }
 
+    /** Only the owning identity may mutate a book — belt-and-suspenders alongside the UI's own scoping. */
+    private suspend fun ownedBook(bookId: String): BookEntity? =
+        dao.getById(bookId)?.takeIf { it.ownerUid == identity.current() }
+
     override suspend fun rename(bookId: String, name: String) {
-        val existing = dao.getById(bookId) ?: return
+        val existing = ownedBook(bookId) ?: return
         val now = System.currentTimeMillis()
         dao.upsert(existing.copy(name = name, sync = existing.sync.bumped(prefs.deviceId(), now)))
     }
 
     override suspend fun softDelete(bookId: String) {
-        val existing = dao.getById(bookId) ?: return
+        val existing = ownedBook(bookId) ?: return
         val now = System.currentTimeMillis()
         dao.upsert(existing.copy(sync = existing.sync.bumped(prefs.deviceId(), now, deletedAt = now)))
     }
 
     override suspend fun restore(bookId: String) {
-        val existing = dao.getById(bookId) ?: return
+        val existing = ownedBook(bookId) ?: return
         val now = System.currentTimeMillis()
         dao.upsert(existing.copy(sync = existing.sync.bumped(prefs.deviceId(), now, deletedAt = null)))
     }
 
     override suspend fun move(bookId: String, targetBusinessId: String) {
-        val existing = dao.getById(bookId) ?: return
+        val existing = ownedBook(bookId) ?: return
         val now = System.currentTimeMillis()
         dao.upsert(existing.copy(businessId = targetBusinessId, sync = existing.sync.bumped(prefs.deviceId(), now)))
     }
 
     override suspend fun duplicate(bookId: String): Book {
-        val existing = dao.getById(bookId) ?: error("Book not found")
+        val existing = ownedBook(bookId) ?: error("Book not found")
         val now = System.currentTimeMillis()
         val copy = existing.copy(
             id = UUID.randomUUID().toString(),
@@ -148,16 +154,19 @@ class BookRepositoryImpl @Inject constructor(
             createdAt = now,
             sync = newEnvelope(prefs.deviceId(), now),
         )
-        dao.upsert(copy)
-        transactionDao.getAllActiveByBook(bookId).forEach { entry ->
-            transactionDao.upsert(
-                entry.copy(
-                    id = UUID.randomUUID().toString(),
-                    bookId = copy.id,
-                    createdByUid = identity.current(),
-                    sync = newEnvelope(prefs.deviceId(), now),
+        // Atomic: a crash/kill mid-copy must not leave a half-duplicated book.
+        db.withTransaction {
+            dao.upsert(copy)
+            transactionDao.getAllActiveByBook(bookId).forEach { entry ->
+                transactionDao.upsert(
+                    entry.copy(
+                        id = UUID.randomUUID().toString(),
+                        bookId = copy.id,
+                        createdByUid = identity.current(),
+                        sync = newEnvelope(prefs.deviceId(), now),
+                    )
                 )
-            )
+            }
         }
         return copy.toDomain()
     }
@@ -167,7 +176,7 @@ class BookRepositoryImpl @Inject constructor(
 class TransactionRepositoryImpl @Inject constructor(
     private val dao: TransactionDao,
     private val prefs: AppPreferences,
-    private val identity: IdentityManager,
+    private val identity: ActiveIdentity,
 ) : TransactionRepository {
 
     override fun observeEntries(bookId: String): Flow<List<Transaction>> =

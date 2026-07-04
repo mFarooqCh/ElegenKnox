@@ -18,6 +18,17 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
+ * Read-only view of the active identity — the seam repositories depend on so they (and their
+ * tests) don't need [IdentityManager]'s full auth/DB dependency graph, just "who owns new writes".
+ */
+interface ActiveIdentity {
+    val activeUid: StateFlow<String>
+
+    /** Snapshot for stamping new writes. */
+    fun current(): String
+}
+
+/**
  * The device's local data-isolation gate (see the "identity-scoped local data" design).
  *
  * Holds the *active identity* — the id that owns the rows currently visible:
@@ -38,9 +49,9 @@ class IdentityManager @Inject constructor(
     private val transactionDao: TransactionDao,
     private val logger: Logger,
     @AppScope scope: CoroutineScope,
-) {
+) : ActiveIdentity {
     private val _activeUid = MutableStateFlow(GUEST_UID)
-    val activeUid: StateFlow<String> = _activeUid.asStateFlow()
+    override val activeUid: StateFlow<String> = _activeUid.asStateFlow()
 
     init {
         scope.launch {
@@ -61,8 +72,7 @@ class IdentityManager @Inject constructor(
         }
     }
 
-    /** Snapshot for stamping new writes. */
-    fun current(): String = _activeUid.value
+    override fun current(): String = _activeUid.value
 
     private suspend fun reassignOwner(from: String, to: String) {
         if (from == to) return

@@ -7,6 +7,8 @@ import com.elegen.elegencashbook.core.logging.AndroidLogger
 import com.elegen.elegencashbook.core.logging.Logger
 import com.elegen.elegencashbook.core.security.Encryptor
 import com.elegen.elegencashbook.core.security.TinkEncryptor
+import com.elegen.elegencashbook.data.identity.ActiveIdentity
+import com.elegen.elegencashbook.data.identity.IdentityManager
 import com.elegen.elegencashbook.data.remote.supabase.AuthRepositoryImpl
 import com.elegen.elegencashbook.data.repository.LocalDataMaintenanceImpl
 import com.elegen.elegencashbook.domain.repository.AuthRepository
@@ -85,4 +87,7 @@ abstract class BindingsModule {
 
     @Binds @Singleton
     abstract fun bindEncryptor(impl: TinkEncryptor): Encryptor
+
+    @Binds @Singleton
+    abstract fun bindActiveIdentity(impl: IdentityManager): ActiveIdentity
 }
