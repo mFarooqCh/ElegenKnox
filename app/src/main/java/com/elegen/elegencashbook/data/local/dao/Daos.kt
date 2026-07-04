@@ -2,10 +2,13 @@ package com.elegen.elegencashbook.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Embedded
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Upsert
 import com.elegen.elegencashbook.data.local.entity.BookEntity
 import com.elegen.elegencashbook.data.local.entity.BusinessEntity
+import com.elegen.elegencashbook.data.local.entity.SyncQueueEntity
 import com.elegen.elegencashbook.data.local.entity.TransactionEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -38,6 +41,10 @@ interface BusinessDao {
     /** Guest → uid on login: reassign ownership and re-queue for sync (spec §8.2 claim). */
     @Query("UPDATE businesses SET ownerUid = :uid, updatedAt = :now, syncState = 'PENDING' WHERE ownerUid = :guest")
     suspend fun claimOwner(guest: String, uid: String, now: Long)
+
+    /** Marks SYNCED only if the row hasn't been re-edited since it was pushed (version guard). */
+    @Query("UPDATE businesses SET syncState = 'SYNCED' WHERE id = :id AND version = :version")
+    suspend fun markSynced(id: String, version: Long)
 }
 
 data class BookWithBalanceRow(
@@ -78,6 +85,9 @@ interface BookDao {
 
     @Query("UPDATE books SET ownerUid = :uid, updatedAt = :now, syncState = 'PENDING' WHERE ownerUid = :guest")
     suspend fun claimOwner(guest: String, uid: String, now: Long)
+
+    @Query("UPDATE books SET syncState = 'SYNCED' WHERE id = :id AND version = :version")
+    suspend fun markSynced(id: String, version: Long)
 }
 
 @Dao
@@ -104,4 +114,40 @@ interface TransactionDao {
 
     @Query("UPDATE transactions SET createdByUid = :uid, updatedAt = :now, syncState = 'PENDING' WHERE createdByUid = :guest")
     suspend fun claimCreator(guest: String, uid: String, now: Long)
+
+    @Query("UPDATE transactions SET syncState = 'SYNCED' WHERE id = :id AND version = :version")
+    suspend fun markSynced(id: String, version: Long)
+}
+
+@Dao
+interface SyncQueueDao {
+    /** Idempotent: a duplicate {entityId}:{version} key is ignored (unique index, spec §6.5). */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(row: SyncQueueEntity)
+
+    /**
+     * Drain order: entity-type tier (BUSINESS, BOOK, TRANSACTION) first, insertion id within a
+     * tier second — parent-before-child (spec §6.3). Tiering, not just id order, matters because
+     * a backfilled row (pre-existing local data enqueued after the fact, see MIGRATION_2_3) can
+     * land with a *higher* id than an already-queued child row; plain id order would keep retrying
+     * that child (FK violation against a not-yet-pushed parent) forever instead of pushing the
+     * parent first.
+     */
+    @Query(
+        """
+        SELECT * FROM sync_queue WHERE status = 'PENDING'
+        ORDER BY CASE entityType WHEN 'BUSINESS' THEN 0 WHEN 'BOOK' THEN 1 ELSE 2 END, id ASC
+        """
+    )
+    suspend fun pending(): List<SyncQueueEntity>
+
+    @Query("DELETE FROM sync_queue WHERE id = :id")
+    suspend fun delete(id: Long)
+
+    /** Bump retry + timestamp; caller flips status to DEAD_LETTER once retryCount >= maxRetry. */
+    @Query("UPDATE sync_queue SET retryCount = :retryCount, lastAttempt = :now, status = :status WHERE id = :id")
+    suspend fun recordAttempt(id: Long, retryCount: Int, now: Long, status: String)
+
+    @Query("SELECT COUNT(*) FROM sync_queue WHERE status = :status")
+    suspend fun countByStatus(status: String): Int
 }

@@ -7,6 +7,7 @@ import com.elegen.elegencashbook.data.local.db.AppDatabase
 import com.elegen.elegencashbook.data.local.entity.BookEntity
 import com.elegen.elegencashbook.data.local.entity.BusinessEntity
 import com.elegen.elegencashbook.data.local.entity.SyncEnvelope
+import com.elegen.elegencashbook.data.local.entity.SyncQueueEntity
 import com.elegen.elegencashbook.data.local.entity.TransactionEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -146,6 +147,74 @@ class DaoTest {
 
         val list = db.transactionDao().observeActiveByBook("bk").first()
         assertEquals(listOf("t1", "t2"), list.map { it.id })
+    }
+
+    // --- Outbox (SyncQueue) — spec §6.5 ---
+
+    private fun outboxRow(key: String, type: String = "BOOK", id: String = "e1", version: Long = 1) =
+        SyncQueueEntity(
+            idempotencyKey = key, entityType = type, entityId = id,
+            operation = SyncQueueEntity.OP_CREATE, payloadVersion = version,
+        )
+
+    @Test
+    fun `pending rows drain in insertion order`() = runBlocking {
+        val dao = db.syncQueueDao()
+        dao.insert(outboxRow("a:1", id = "a"))
+        dao.insert(outboxRow("b:1", id = "b"))
+        dao.insert(outboxRow("c:1", id = "c"))
+        assertEquals(listOf("a", "b", "c"), dao.pending().map { it.entityId })
+    }
+
+    @Test
+    fun `pending tiers business then book then transaction regardless of insertion order`() = runBlocking {
+        val dao = db.syncQueueDao()
+        // Simulates a backfill: a transaction row queued first (lower id), its parents backfilled later.
+        dao.insert(outboxRow("tx:1", type = "TRANSACTION", id = "tx"))
+        dao.insert(outboxRow("book:1", type = "BOOK", id = "book"))
+        dao.insert(outboxRow("biz:1", type = "BUSINESS", id = "biz"))
+
+        assertEquals(listOf("biz", "book", "tx"), dao.pending().map { it.entityId })
+    }
+
+    @Test
+    fun `duplicate idempotency key is ignored (idempotent replay)`() = runBlocking {
+        val dao = db.syncQueueDao()
+        dao.insert(outboxRow("e1:1"))
+        dao.insert(outboxRow("e1:1")) // same write enqueued twice
+        assertEquals(1, dao.pending().size)
+    }
+
+    @Test
+    fun `recordAttempt bumps retry and transitions to dead letter`() = runBlocking {
+        val dao = db.syncQueueDao()
+        dao.insert(outboxRow("e1:1"))
+        val row = dao.pending().single()
+
+        dao.recordAttempt(row.id, retryCount = 1, now = 10L, status = SyncQueueEntity.STATE_PENDING)
+        assertEquals(1, dao.pending().single().retryCount) // still drainable
+
+        dao.recordAttempt(row.id, retryCount = 5, now = 20L, status = SyncQueueEntity.STATE_DEAD_LETTER)
+        assertEquals(0, dao.pending().size) // no longer PENDING
+        assertEquals(1, dao.countByStatus(SyncQueueEntity.STATE_DEAD_LETTER))
+    }
+
+    @Test
+    fun `markSynced only clears the pushed version, not a newer edit`() = runBlocking {
+        db.transactionDao().upsert(entry("t1", "bk", "CASH_IN", 100, updatedAt = 1L).let {
+            it.copy(sync = it.sync.copy(version = 2))
+        })
+        // A concurrent edit advanced the row to version 3 before the push ack lands for version 2.
+        val current = db.transactionDao().getById("t1")!!.copy(
+            sync = db.transactionDao().getById("t1")!!.sync.copy(version = 3, syncState = SyncEnvelope.STATE_PENDING)
+        )
+        db.transactionDao().upsert(current)
+
+        db.transactionDao().markSynced("t1", version = 2) // stale ack — must not mark synced
+        assertEquals(SyncEnvelope.STATE_PENDING, db.transactionDao().getById("t1")!!.sync.syncState)
+
+        db.transactionDao().markSynced("t1", version = 3) // ack for the live version
+        assertEquals(SyncEnvelope.STATE_SYNCED, db.transactionDao().getById("t1")!!.sync.syncState)
     }
 
     @Test

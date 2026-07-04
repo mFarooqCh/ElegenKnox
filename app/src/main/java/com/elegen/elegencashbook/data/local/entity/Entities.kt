@@ -68,3 +68,50 @@ data class TransactionEntity(
     val createdByUid: String,
     @Embedded val sync: SyncEnvelope,
 )
+
+/**
+ * The outbox (spec §6.5). One row per local write that still needs pushing. The row only
+ * *references* the entity (type + id + version); the pusher re-reads current Room state at
+ * push time, so a soft-deleted (tombstoned) row pushes as an upsert with deletedAt set —
+ * CREATE/UPDATE/DELETE all collapse to "upsert current state" (spec §6.3).
+ *
+ * `id` is the monotonic sequence (auto-increment) — draining in id order gives
+ * parent-before-child ordering for free (a book is enqueued before its transactions).
+ */
+@Entity(
+    tableName = "sync_queue",
+    indices = [
+        Index("status", "id"),
+        // {entityId}:{version} — a given write is enqueued at most once (idempotent replay, spec §6.5).
+        Index(value = ["idempotencyKey"], unique = true),
+    ],
+)
+data class SyncQueueEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val idempotencyKey: String,
+    /** BUSINESS | BOOK | TRANSACTION. */
+    val entityType: String,
+    val entityId: String,
+    /** CREATE | UPDATE | DELETE — informational; the push is a state upsert regardless. */
+    val operation: String,
+    val payloadVersion: Long,
+    val retryCount: Int = 0,
+    val maxRetry: Int = 5,
+    val lastAttempt: Long? = null,
+    /** PENDING | UPLOADING | DEAD_LETTER (SUCCESS rows are deleted, spec §6.3). */
+    val status: String = STATE_PENDING,
+) {
+    companion object {
+        const val TYPE_BUSINESS = "BUSINESS"
+        const val TYPE_BOOK = "BOOK"
+        const val TYPE_TRANSACTION = "TRANSACTION"
+
+        const val OP_CREATE = "CREATE"
+        const val OP_UPDATE = "UPDATE"
+        const val OP_DELETE = "DELETE"
+
+        const val STATE_PENDING = "PENDING"
+        const val STATE_UPLOADING = "UPLOADING"
+        const val STATE_DEAD_LETTER = "DEAD_LETTER"
+    }
+}

@@ -87,3 +87,12 @@ interface LocalDataMaintenance {
     /** Wipes Room + preferences back to fresh-install state. */
     suspend fun wipeAll()
 }
+
+/**
+ * Requests the outbox be drained to the cloud (spec §6.3). Fire-and-forget: the impl enqueues a
+ * network-constrained background worker, so callers never block on the network (offline-safe).
+ * Kept as a pure interface so repositories (and their unit tests) don't depend on WorkManager.
+ */
+interface SyncScheduler {
+    fun requestPush()
+}

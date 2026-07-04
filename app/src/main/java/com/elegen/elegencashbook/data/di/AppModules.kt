@@ -15,15 +15,20 @@ import com.elegen.elegencashbook.domain.repository.AuthRepository
 import com.elegen.elegencashbook.domain.repository.LocalDataMaintenance
 import com.elegen.elegencashbook.data.local.dao.BookDao
 import com.elegen.elegencashbook.data.local.dao.BusinessDao
+import com.elegen.elegencashbook.data.local.dao.SyncQueueDao
 import com.elegen.elegencashbook.data.local.dao.TransactionDao
 import com.elegen.elegencashbook.data.local.db.AppDatabase
+import com.elegen.elegencashbook.data.local.db.MIGRATION_1_2
+import com.elegen.elegencashbook.data.local.db.MIGRATION_2_3
 import com.elegen.elegencashbook.data.repository.BookRepositoryImpl
 import com.elegen.elegencashbook.data.repository.BusinessRepositoryImpl
 import com.elegen.elegencashbook.data.repository.SettingsRepositoryImpl
 import com.elegen.elegencashbook.data.repository.TransactionRepositoryImpl
+import com.elegen.elegencashbook.data.sync.WorkManagerSyncScheduler
 import com.elegen.elegencashbook.domain.repository.BookRepository
 import com.elegen.elegencashbook.domain.repository.BusinessRepository
 import com.elegen.elegencashbook.domain.repository.SettingsRepository
+import com.elegen.elegencashbook.domain.repository.SyncScheduler
 import com.elegen.elegencashbook.domain.repository.TransactionRepository
 import dagger.Binds
 import dagger.Module
@@ -53,11 +58,14 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
-        Room.databaseBuilder(context, AppDatabase::class.java, "elegen.db").build()
+        Room.databaseBuilder(context, AppDatabase::class.java, "elegen.db")
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .build()
 
     @Provides fun provideBusinessDao(db: AppDatabase): BusinessDao = db.businessDao()
     @Provides fun provideBookDao(db: AppDatabase): BookDao = db.bookDao()
     @Provides fun provideTransactionDao(db: AppDatabase): TransactionDao = db.transactionDao()
+    @Provides fun provideSyncQueueDao(db: AppDatabase): SyncQueueDao = db.syncQueueDao()
 }
 
 @Module
@@ -90,4 +98,7 @@ abstract class BindingsModule {
 
     @Binds @Singleton
     abstract fun bindActiveIdentity(impl: IdentityManager): ActiveIdentity
+
+    @Binds @Singleton
+    abstract fun bindSyncScheduler(impl: WorkManagerSyncScheduler): SyncScheduler
 }

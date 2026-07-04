@@ -17,7 +17,7 @@ Offline-first Android cashbook. Phases P0–P3 done and committed; **P4 (push sy
 | P2 Room + MVVM | done, gate passed |
 | P3 Supabase auth + identity scoping | code done; **on-device proof gate incomplete** (device keeps dropping off wireless adb) — server-side (RLS, curl matrix) verified, on-device tap-through not yet re-confirmed by user |
 | Post-P3 hardening | code-review pass (7 findings) fixed + verified; 3 user-reported bugs (backdated-entry grouping, book-details 3-dot menu, stale "Updated" label) fixed today |
-| P4 Push sync | **not started** |
+| P4 Push sync | **code + server SQL done and on-device verified working (first real push confirmed 2026-07-04); proof gate not yet formally re-run.** Outbox table + Migration(1,2), atomic entity+outbox writes (`OutboxWriter`), `SyncPushWorker` (PostgREST upsert, backoff, dead-letter), `WorkManagerSyncScheduler`, `RemotePush`. Server tables/RLS in `supabase/migrations/20260704000002_p4_sync_tables.sql` (applied). Migration(2,3) backfills pre-outbox local data; `SyncQueueDao.pending()` tiers BUSINESS→BOOK→TRANSACTION (not just insertion id) so backfilled parents always push before already-queued children. First device run pushed all 27 backfilled+new rows clean (2 businesses/8 books/15 transactions confirmed via Supabase MCP). 79 unit tests green. |
 
 Commits on top of P2: `956473a` (P3), `16129d5` (review fixes), `89d66ef` (today's 3 bugs). Local test suite: 46 tests, 0 failures. `assembleDebug` clean. `installDebug` currently fails — **no device connected**; reconnect before trusting anything beyond compile+test.
 

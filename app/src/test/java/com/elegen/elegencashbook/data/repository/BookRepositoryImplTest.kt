@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.elegen.elegencashbook.data.identity.ActiveIdentity
 import com.elegen.elegencashbook.data.local.dao.TransactionDao
 import com.elegen.elegencashbook.data.local.db.AppDatabase
+import com.elegen.elegencashbook.domain.repository.SyncScheduler
 import com.elegen.elegencashbook.data.local.entity.BusinessEntity
 import com.elegen.elegencashbook.data.local.entity.SyncEnvelope
 import com.elegen.elegencashbook.data.local.entity.TransactionEntity
@@ -28,6 +29,11 @@ import org.robolectric.annotation.Config
 private class FakeIdentity(uid: String) : ActiveIdentity {
     override val activeUid = MutableStateFlow(uid)
     override fun current(): String = activeUid.value
+}
+
+/** No WorkManager in unit tests; the push trigger is verified separately at the worker level. */
+private object NoopScheduler : SyncScheduler {
+    override fun requestPush() = Unit
 }
 
 /** Delegates everything to [real] except upsert, which fails on the Nth+1 call — simulates a crash mid-copy. */
@@ -64,8 +70,10 @@ class BookRepositoryImplTest {
 
     private fun envelope() = SyncEnvelope(1, 1L, "dev", null, SyncEnvelope.STATE_PENDING)
 
+    private fun outbox() = OutboxWriter(db, db.syncQueueDao(), NoopScheduler)
+
     private fun repo(identityUid: String = "u1", transactionDao: TransactionDao = db.transactionDao()) =
-        BookRepositoryImpl(db, db.bookDao(), transactionDao, prefs, FakeIdentity(identityUid))
+        BookRepositoryImpl(db, db.bookDao(), transactionDao, prefs, FakeIdentity(identityUid), outbox())
 
     private suspend fun seedBusinessAndBook(owner: String = "u1") {
         db.businessDao().upsert(BusinessEntity("biz", "Biz", owner, "PKR", 1L, envelope()))
@@ -147,5 +155,28 @@ class BookRepositoryImplTest {
         val books = db.bookDao().observeWithBalance("biz").first()
         assertEquals(1, books.size)
         assertEquals(2, db.transactionDao().getAllActiveByBook("bk").size)
+    }
+
+    @Test
+    fun `every mutation queues an outbox row atomically`() = runBlocking {
+        seedBusinessAndBook()
+        val r = repo()
+        r.create("biz", "New")          // 1 book create
+        r.rename("bk", "Renamed")       // 1 book update
+        // One outbox row per write; both committed alongside their entity.
+        assertEquals(2, db.syncQueueDao().pending().size)
+    }
+
+    @Test
+    fun `rollback also discards the outbox rows (no orphan queue entry)`() = runBlocking {
+        seedBusinessAndBook()
+        val throwingDao = ThrowingAfterNTransactionDao(db.transactionDao(), throwAfter = 0)
+        db.transactionDao().upsert(TransactionEntity("t1", "bk", "CASH_IN", 100, null, "", 1L, "u1", envelope()))
+
+        assertThrows(IllegalStateException::class.java) {
+            runBlocking { repo(transactionDao = throwingDao).duplicate("bk") }
+        }
+        // The book-copy outbox row enqueued before the failing entry must be rolled back too.
+        assertTrue(db.syncQueueDao().pending().isEmpty())
     }
 }

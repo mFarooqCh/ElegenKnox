@@ -9,6 +9,7 @@ import com.elegen.elegencashbook.data.local.dao.TransactionDao
 import com.elegen.elegencashbook.data.local.db.AppDatabase
 import com.elegen.elegencashbook.domain.model.SessionState
 import com.elegen.elegencashbook.domain.repository.AuthRepository
+import com.elegen.elegencashbook.domain.repository.SyncScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,6 +49,7 @@ class IdentityManager @Inject constructor(
     private val bookDao: BookDao,
     private val transactionDao: TransactionDao,
     private val logger: Logger,
+    private val syncScheduler: SyncScheduler,
     @AppScope scope: CoroutineScope,
 ) : ActiveIdentity {
     private val _activeUid = MutableStateFlow(GUEST_UID)
@@ -64,6 +66,8 @@ class IdentityManager @Inject constructor(
                         // Claim first so the user's list is complete the moment the uid becomes active.
                         reassignOwner(GUEST_UID, session.user.id)
                         _activeUid.value = session.user.id
+                        // Sync is paused while guest; first login drains everything queued so far.
+                        syncScheduler.requestPush()
                     }
                     SessionState.Guest -> _activeUid.value = GUEST_UID
                     SessionState.Loading -> Unit // keep current until resolved

@@ -7,6 +7,7 @@ import com.elegen.elegencashbook.data.local.dao.TransactionDao
 import com.elegen.elegencashbook.data.local.entity.BookEntity
 import com.elegen.elegencashbook.data.local.entity.BusinessEntity
 import com.elegen.elegencashbook.data.local.entity.SyncEnvelope
+import com.elegen.elegencashbook.data.local.entity.SyncQueueEntity
 import com.elegen.elegencashbook.data.local.entity.TransactionEntity
 import com.elegen.elegencashbook.data.local.prefs.AppPreferences
 import com.elegen.elegencashbook.data.mapper.toDomain
@@ -64,6 +65,7 @@ class BusinessRepositoryImpl @Inject constructor(
     private val dao: BusinessDao,
     private val prefs: AppPreferences,
     private val identity: ActiveIdentity,
+    private val outbox: OutboxWriter,
 ) : BusinessRepository {
 
     // Re-subscribes on every identity change (login/logout) so the visible set is always the
@@ -83,8 +85,10 @@ class BusinessRepositoryImpl @Inject constructor(
             createdAt = now,
             sync = newEnvelope(prefs.deviceId(), now),
         )
-        dao.upsert(entity)
-        return entity.toDomain()
+        return outbox.write(SyncQueueEntity.TYPE_BUSINESS, entity.id, entity.sync.version, SyncQueueEntity.OP_CREATE) {
+            dao.upsert(entity)
+            entity.toDomain()
+        }
     }
 }
 
@@ -95,6 +99,7 @@ class BookRepositoryImpl @Inject constructor(
     private val transactionDao: TransactionDao,
     private val prefs: AppPreferences,
     private val identity: ActiveIdentity,
+    private val outbox: OutboxWriter,
 ) : BookRepository {
 
     // Scoped by businessId; access to the business is already the identity gate (BusinessRepository).
@@ -112,36 +117,42 @@ class BookRepositoryImpl @Inject constructor(
             createdAt = now,
             sync = newEnvelope(prefs.deviceId(), now),
         )
-        dao.upsert(entity)
-        return entity.toDomain()
+        return outbox.write(SyncQueueEntity.TYPE_BOOK, entity.id, entity.sync.version, SyncQueueEntity.OP_CREATE) {
+            dao.upsert(entity)
+            entity.toDomain()
+        }
     }
 
     /** Only the owning identity may mutate a book — belt-and-suspenders alongside the UI's own scoping. */
     private suspend fun ownedBook(bookId: String): BookEntity? =
         dao.getById(bookId)?.takeIf { it.ownerUid == identity.current() }
 
+    private suspend fun bump(existing: BookEntity, operation: String, deletedAt: Long? = existing.sync.deletedAt, transform: BookEntity.() -> BookEntity = { this }) {
+        val now = System.currentTimeMillis()
+        val updated = existing.transform().copy(sync = existing.sync.bumped(prefs.deviceId(), now, deletedAt))
+        outbox.write(SyncQueueEntity.TYPE_BOOK, updated.id, updated.sync.version, operation) {
+            dao.upsert(updated)
+        }
+    }
+
     override suspend fun rename(bookId: String, name: String) {
         val existing = ownedBook(bookId) ?: return
-        val now = System.currentTimeMillis()
-        dao.upsert(existing.copy(name = name, sync = existing.sync.bumped(prefs.deviceId(), now)))
+        bump(existing, SyncQueueEntity.OP_UPDATE) { copy(name = name) }
     }
 
     override suspend fun softDelete(bookId: String) {
         val existing = ownedBook(bookId) ?: return
-        val now = System.currentTimeMillis()
-        dao.upsert(existing.copy(sync = existing.sync.bumped(prefs.deviceId(), now, deletedAt = now)))
+        bump(existing, SyncQueueEntity.OP_DELETE, deletedAt = System.currentTimeMillis())
     }
 
     override suspend fun restore(bookId: String) {
         val existing = ownedBook(bookId) ?: return
-        val now = System.currentTimeMillis()
-        dao.upsert(existing.copy(sync = existing.sync.bumped(prefs.deviceId(), now, deletedAt = null)))
+        bump(existing, SyncQueueEntity.OP_UPDATE, deletedAt = null)
     }
 
     override suspend fun move(bookId: String, targetBusinessId: String) {
         val existing = ownedBook(bookId) ?: return
-        val now = System.currentTimeMillis()
-        dao.upsert(existing.copy(businessId = targetBusinessId, sync = existing.sync.bumped(prefs.deviceId(), now)))
+        bump(existing, SyncQueueEntity.OP_UPDATE) { copy(businessId = targetBusinessId) }
     }
 
     override suspend fun duplicate(bookId: String): Book {
@@ -154,20 +165,23 @@ class BookRepositoryImpl @Inject constructor(
             createdAt = now,
             sync = newEnvelope(prefs.deviceId(), now),
         )
-        // Atomic: a crash/kill mid-copy must not leave a half-duplicated book.
+        // Atomic: a crash/kill mid-copy must not leave a half-duplicated book — and every copied
+        // row is queued for sync in the same transaction (book before its entries, spec §6.3).
         db.withTransaction {
             dao.upsert(copy)
+            outbox.enqueue(SyncQueueEntity.TYPE_BOOK, copy.id, copy.sync.version, SyncQueueEntity.OP_CREATE)
             transactionDao.getAllActiveByBook(bookId).forEach { entry ->
-                transactionDao.upsert(
-                    entry.copy(
-                        id = UUID.randomUUID().toString(),
-                        bookId = copy.id,
-                        createdByUid = identity.current(),
-                        sync = newEnvelope(prefs.deviceId(), now),
-                    )
+                val newEntry = entry.copy(
+                    id = UUID.randomUUID().toString(),
+                    bookId = copy.id,
+                    createdByUid = identity.current(),
+                    sync = newEnvelope(prefs.deviceId(), now),
                 )
+                transactionDao.upsert(newEntry)
+                outbox.enqueue(SyncQueueEntity.TYPE_TRANSACTION, newEntry.id, newEntry.sync.version, SyncQueueEntity.OP_CREATE)
             }
         }
+        outbox.requestPush()
         return copy.toDomain()
     }
 }
@@ -177,6 +191,7 @@ class TransactionRepositoryImpl @Inject constructor(
     private val dao: TransactionDao,
     private val prefs: AppPreferences,
     private val identity: ActiveIdentity,
+    private val outbox: OutboxWriter,
 ) : TransactionRepository {
 
     override fun observeEntries(bookId: String): Flow<List<Transaction>> =
@@ -201,34 +216,40 @@ class TransactionRepositoryImpl @Inject constructor(
             createdByUid = identity.current(),
             sync = newEnvelope(prefs.deviceId(), now),
         )
-        dao.upsert(entity)
-        return entity.toDomain()
+        return outbox.write(SyncQueueEntity.TYPE_TRANSACTION, entity.id, entity.sync.version, SyncQueueEntity.OP_CREATE) {
+            dao.upsert(entity)
+            entity.toDomain()
+        }
+    }
+
+    private suspend fun bump(existing: TransactionEntity, operation: String, deletedAt: Long? = existing.sync.deletedAt, transform: TransactionEntity.() -> TransactionEntity = { this }) {
+        val now = System.currentTimeMillis()
+        val updated = existing.transform().copy(sync = existing.sync.bumped(prefs.deviceId(), now, deletedAt))
+        outbox.write(SyncQueueEntity.TYPE_TRANSACTION, updated.id, updated.sync.version, operation) {
+            dao.upsert(updated)
+        }
     }
 
     override suspend fun update(transaction: Transaction) {
         val existing = dao.getById(transaction.id) ?: return
-        val now = System.currentTimeMillis()
-        dao.upsert(
-            existing.copy(
+        bump(existing, SyncQueueEntity.OP_UPDATE) {
+            copy(
                 type = transaction.type.name,
                 amountPaisa = transaction.amount.paisa,
                 description = transaction.description,
                 createdAt = transaction.createdAt,
-                sync = existing.sync.bumped(prefs.deviceId(), now),
             )
-        )
+        }
     }
 
     override suspend fun softDelete(id: String) {
         val existing = dao.getById(id) ?: return
-        val now = System.currentTimeMillis()
-        dao.upsert(existing.copy(sync = existing.sync.bumped(prefs.deviceId(), now, deletedAt = now)))
+        bump(existing, SyncQueueEntity.OP_DELETE, deletedAt = System.currentTimeMillis())
     }
 
     override suspend fun restore(id: String) {
         val existing = dao.getById(id) ?: return
-        val now = System.currentTimeMillis()
-        dao.upsert(existing.copy(sync = existing.sync.bumped(prefs.deviceId(), now, deletedAt = null)))
+        bump(existing, SyncQueueEntity.OP_UPDATE, deletedAt = null)
     }
 }
 

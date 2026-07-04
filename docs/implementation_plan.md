@@ -112,12 +112,12 @@
 **Goal:** local writes flow up. Nothing lost, ever (constitution §2).
 
 **Checklist**
-- [ ] Postgres tables mirroring §7 (`businesses`, `books`, `transactions`, `categories`) + `updated_at = now()` trigger + minimal RLS: *owner-only* access (`owner_uid = auth.uid()`) — full RBAC comes in P6.
-- [ ] `SyncQueue` Room table (spec §6.5: idempotencyKey, sequence, status, retry, dead-letter).
-- [ ] Repository writes become: one Room tx = entity write + outbox row (spec §6.3).
-- [ ] `SyncPushWorker`: drains in sequence order; PostgREST upsert; exponential backoff; maxRetry → `DEAD_LETTER`; network-constrained; enqueued on every commit + periodic.
-- [ ] Sync only when logged in; guest mode = outbox accumulates (or paused) — decide: **paused, drained on first login**.
-- [ ] Outbox unit tests: idempotent replay, ordering, dead-letter transition.
+- [x] Postgres tables mirroring §7 (`businesses`, `books`, `transactions`) + `updated_at = now()` trigger + minimal RLS: *owner-only* access (`owner_uid`/`created_by_uid = auth.uid()`) — full RBAC comes in P6. **SQL written (`supabase/migrations/20260704000002_p4_sync_tables.sql`); apply via dashboard SQL Editor.** `categories` deferred — no CategoryEntity exists locally yet, so nothing to push (add with the entity, not speculatively).
+- [x] `SyncQueue` Room table (spec §6.5: idempotencyKey, sequence=auto-inc id, status, retry, dead-letter) + non-destructive Migration(1,2).
+- [x] Repository writes become: one Room tx = entity write + outbox row (spec §6.3) — via `OutboxWriter`. Push re-reads current entity state, so CREATE/UPDATE/DELETE all reduce to a PostgREST upsert (soft-delete tombstone carries the delete).
+- [x] `SyncPushWorker`: drains in id (sequence) order; PostgREST upsert; exponential backoff; maxRetry → `DEAD_LETTER`; network-constrained; enqueued on every commit. (Periodic pull is P5; a periodic *push* is unnecessary — every commit already enqueues.)
+- [x] Sync only when logged in; guest mode = outbox accumulates, **paused, drained on first login** (worker no-ops while guest; `IdentityManager` kicks a drain after claim-on-login).
+- [x] Outbox unit tests: idempotent replay, ordering, dead-letter transition, markSynced version-guard, atomic-rollback-of-queue-row (79 tests, 0 fail).
 
 **Proof Gate P4**
 - [ ] Airplane ON → add 3 entries → airplane OFF → rows appear in Supabase (verify in Studio/psql) with server `updated_at`.

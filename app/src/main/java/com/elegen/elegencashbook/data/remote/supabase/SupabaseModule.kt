@@ -9,6 +9,7 @@ import dagger.hilt.components.SingletonComponent
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.postgrest.Postgrest
 import javax.inject.Singleton
 
 /**
@@ -51,6 +52,7 @@ object SupabaseModule {
                     scheme = AUTH_DEEP_LINK_SCHEME
                     host = AUTH_DEEP_LINK_HOST
                 }
+                install(Postgrest) // P4 outbox push target; RLS + user JWT gate every row (spec §6.3, §8.6)
             }
             SupabaseClientHolder(client)
         } catch (e: Exception) {
