@@ -16,6 +16,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -24,6 +25,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.elegen.elegencashbook.core.ui.setPrimaryEnabled
 import com.elegen.elegencashbook.data.remote.supabase.AuthDeepLinkHandler
 import com.elegen.elegencashbook.feature.main.BookItem
 import com.elegen.elegencashbook.feature.main.BusinessItem
@@ -245,9 +247,7 @@ class MainActivity : AppCompatActivity() {
         val addBusinessButton = view.findViewById<MaterialButton>(R.id.add_business_button)
 
         businessList.layoutManager = LinearLayoutManager(this)
-        addBusinessButton.isEnabled = true
-        addBusinessButton.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#2563EB"))
-        addBusinessButton.setTextColor(android.graphics.Color.WHITE)
+        addBusinessButton.setPrimaryEnabled(true)
 
         val adapter = BusinessAdapter { business ->
             viewModel.onEvent(MainUiEvent.SelectBusiness(business.id))
@@ -286,15 +286,8 @@ class MainActivity : AppCompatActivity() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 val hasText = !s.isNullOrBlank()
-                addBookButton.isEnabled = hasText
-                if (hasText) {
-                    bookNameLayout.error = null
-                    addBookButton.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#2563EB"))
-                    addBookButton.setTextColor(android.graphics.Color.WHITE)
-                } else {
-                    addBookButton.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#E5E7EB"))
-                    addBookButton.setTextColor(android.graphics.Color.parseColor("#6B7280"))
-                }
+                addBookButton.setPrimaryEnabled(hasText)
+                if (hasText) bookNameLayout.error = null
             }
             override fun afterTextChanged(s: Editable?) = Unit
         }
@@ -316,7 +309,7 @@ class MainActivity : AppCompatActivity() {
                 dialog.dismiss()
             } else {
                 bookNameLayout.error = "Name is required"
-                bookNameLayout.boxStrokeColor = android.graphics.Color.parseColor("#DC2626")
+                bookNameLayout.boxStrokeColor = ContextCompat.getColor(this, R.color.danger_red)
                 bookNameInput.requestFocus()
             }
         }
@@ -349,10 +342,10 @@ class MainActivity : AppCompatActivity() {
             holder.count.text = "${business.bookCount} ${if (business.bookCount == 1) "book" else "books"}"
             if (business.isActive) {
                 holder.selected.setImageResource(R.drawable.ic_check_circle)
-                holder.selected.setColorFilter(0xFF16A34A.toInt())
+                holder.selected.setColorFilter(ContextCompat.getColor(this@MainActivity, R.color.success_green))
             } else {
                 holder.selected.setImageResource(R.drawable.ic_radio_unchecked)
-                holder.selected.setColorFilter(0xFFD1D5DB.toInt())
+                holder.selected.setColorFilter(ContextCompat.getColor(this@MainActivity, R.color.unselected_gray))
             }
         }
 

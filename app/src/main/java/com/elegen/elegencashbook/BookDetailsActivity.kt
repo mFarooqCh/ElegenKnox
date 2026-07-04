@@ -3,10 +3,8 @@ package com.elegen.elegencashbook
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Context
-import android.graphics.Color
-import android.graphics.Typeface
+import android.content.res.ColorStateList
 import android.os.Bundle
-import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -24,6 +22,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.elegen.elegencashbook.core.money.Money
 import com.elegen.elegencashbook.feature.book.BookDetailsUiEvent
 import com.elegen.elegencashbook.feature.book.BookDetailsUiState
@@ -49,7 +49,8 @@ class BookDetailsActivity : AppCompatActivity() {
     private lateinit var tvTotalIn:         TextView
     private lateinit var tvTotalOut:        TextView
     private lateinit var tvEntryCount:      TextView
-    private lateinit var entryListContainer: LinearLayout
+    private lateinit var entryListContainer: RecyclerView
+    private val entryAdapter = EntryAdapter()
 
     private var uiState = BookDetailsUiState()
 
@@ -81,6 +82,8 @@ class BookDetailsActivity : AppCompatActivity() {
         tvTotalOut         = findViewById(R.id.tv_total_out)
         tvEntryCount       = findViewById(R.id.tv_entry_count)
         entryListContainer = findViewById(R.id.entry_list_container)
+        entryListContainer.layoutManager = LinearLayoutManager(this)
+        entryListContainer.adapter = entryAdapter
 
         findViewById<TextView>(R.id.btn_view_reports).setOnClickListener {
             Toast.makeText(this, "View Reports", Toast.LENGTH_SHORT).show()
@@ -123,10 +126,8 @@ class BookDetailsActivity : AppCompatActivity() {
         val view   = LayoutInflater.from(this).inflate(R.layout.dialog_add_entry, null)
         dialog.setContentView(view)
 
-        val accentHex     = if (isCashIn) "#16A34A" else "#DC2626"
-        val accentBgHex   = if (isCashIn) "#DCFCE7" else "#FEE2E2"
-        val accentColor   = Color.parseColor(accentHex)
-        val accentBgColor = Color.parseColor(accentBgHex)
+        val accentColor   = ContextCompat.getColor(this, if (isCashIn) R.color.success_green else R.color.danger_red)
+        val accentBgColor = ContextCompat.getColor(this, if (isCashIn) R.color.success_green_bg else R.color.danger_red_bg)
 
         // Title
         view.findViewById<TextView>(R.id.dialog_title).apply {
@@ -330,127 +331,90 @@ class BookDetailsActivity : AppCompatActivity() {
         tvTotalIn.text       = "Rs ${state.totalInText}"
         tvTotalOut.text      = "Rs ${state.totalOutText}"
         tvEntryCount.text    = "Showing $count ${if (count == 1) "entry" else "entries"}"
-        refreshEntryList(state.entries)
+        entryAdapter.submit(state.entries)
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    private fun refreshEntryList(entries: List<EntryItem>) {
-        entryListContainer.removeAllViews()
+    /** [entries] arrive pre-grouped by date; a header row is inserted whenever the date changes. */
+    private sealed interface EntryRow {
+        data class Header(val date: String) : EntryRow
+        data class Line(val entry: EntryItem) : EntryRow
+    }
 
-        fun px(dp: Int) = (dp * resources.displayMetrics.density).toInt()
+    private inner class EntryAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+        private val rows = mutableListOf<EntryRow>()
 
-        var lastDate: String? = null
-
-        entries.forEach { entry ->
-
-            // ── Date header (one per date group, entries are already date-ordered) ──
-            if (entry.dateText != lastDate) {
-                lastDate = entry.dateText
-                entryListContainer.addView(TextView(this).apply {
-                    text = entry.dateText
-                    textSize = 13f
-                    setTypeface(null, Typeface.BOLD)
-                    setTextColor(Color.parseColor("#374151"))
-                    setBackgroundColor(Color.parseColor("#F0F2F5"))
-                    setPadding(px(16), px(4), px(16), px(4))
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-                })
-            }
-
-            // ── Divider ──
-            entryListContainer.addView(View(this).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, 1)
-                setBackgroundColor(Color.parseColor("#E5E7EB"))
-            })
-
-            // ── Row container ──
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(px(16), px(12), px(16), px(12))
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT)
-                setBackgroundColor(Color.WHITE)
-                setOnLongClickListener { confirmDelete(entry); true }
-            }
-
-            val accentColor = if (entry.isCashIn) "#16A34A" else "#DC2626"
-            val accentBg    = if (entry.isCashIn) "#DCFCE7" else "#FEE2E2"
-
-            // Leading icon circle
-            val iconCircle = FrameLayout(this).apply {
-                background = ContextCompat.getDrawable(this@BookDetailsActivity, R.drawable.round_shape)
-                backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor(accentBg))
-                layoutParams = LinearLayout.LayoutParams(px(36), px(36))
-            }
-            iconCircle.addView(ImageView(this).apply {
-                setImageResource(if (entry.isCashIn) R.drawable.ic_arrow_up_right else R.drawable.ic_arrow_down_left)
-                imageTintList = android.content.res.ColorStateList.valueOf(Color.parseColor(accentColor))
-                layoutParams = FrameLayout.LayoutParams(px(16), px(16), Gravity.CENTER)
-            })
-
-            // Middle: title + chip/meta
-            val middleCol = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).also {
-                    it.marginStart = px(12)
+        fun submit(entries: List<EntryItem>) {
+            rows.clear()
+            var lastDate: String? = null
+            entries.forEach { entry ->
+                if (entry.dateText != lastDate) {
+                    lastDate = entry.dateText
+                    rows += EntryRow.Header(entry.dateText)
                 }
+                rows += EntryRow.Line(entry)
             }
-            middleCol.addView(TextView(this).apply {
-                text = entry.title
-                textSize = 15f
-                setTypeface(null, Typeface.BOLD)
-                setTextColor(Color.parseColor("#111827"))
-            })
-
-            val metaRow = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT).also { it.topMargin = px(4) }
-            }
-            metaRow.addView(TextView(this).apply {
-                text = "Cash"
-                textSize = 11f
-                setTextColor(Color.parseColor("#2563EB"))
-                setBackgroundResource(R.drawable.bg_chip_blue)
-                setPadding(px(8), px(2), px(8), px(2))
-            })
-            metaRow.addView(TextView(this).apply {
-                text = "  Entry by You · ${entry.timeText}"
-                textSize = 12f
-                setTextColor(Color.parseColor("#6B7280"))
-            })
-            middleCol.addView(metaRow)
-
-            // Trailing: amount + balance
-            val amountCol = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.END
-            }
-            val sign = if (entry.isCashIn) "+" else "-"
-            amountCol.addView(TextView(this).apply {
-                text = "$sign Rs ${entry.amountText}"
-                textSize = 15f
-                setTypeface(null, Typeface.BOLD)
-                setTextColor(Color.parseColor(accentColor))
-                gravity = Gravity.END
-            })
-            amountCol.addView(TextView(this).apply {
-                text = "Bal Rs ${entry.runningBalanceText}"
-                textSize = 12f
-                setTextColor(Color.parseColor("#6B7280"))
-                gravity = Gravity.END
-            })
-
-            row.addView(iconCircle)
-            row.addView(middleCol)
-            row.addView(amountCol)
-            entryListContainer.addView(row)
+            notifyDataSetChanged()
         }
+
+        override fun getItemViewType(position: Int) = when (rows[position]) {
+            is EntryRow.Header -> VIEW_TYPE_HEADER
+            is EntryRow.Line -> VIEW_TYPE_LINE
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+            val inflater = LayoutInflater.from(parent.context)
+            return if (viewType == VIEW_TYPE_HEADER) {
+                HeaderViewHolder(inflater.inflate(R.layout.item_entry_date_header, parent, false))
+            } else {
+                EntryViewHolder(inflater.inflate(R.layout.item_entry_row, parent, false))
+            }
+        }
+
+        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+            when (val row = rows[position]) {
+                is EntryRow.Header -> (holder as HeaderViewHolder).bind(row.date)
+                is EntryRow.Line -> (holder as EntryViewHolder).bind(row.entry)
+            }
+        }
+
+        override fun getItemCount() = rows.size
+
+        private inner class HeaderViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            private val text: TextView = view.findViewById(R.id.entry_header_text)
+            fun bind(date: String) {
+                text.text = date
+            }
+        }
+
+        private inner class EntryViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            private val iconBg: FrameLayout = view.findViewById(R.id.entry_icon_bg)
+            private val icon: ImageView = view.findViewById(R.id.entry_icon)
+            private val title: TextView = view.findViewById(R.id.entry_title)
+            private val meta: TextView = view.findViewById(R.id.entry_meta)
+            private val amount: TextView = view.findViewById(R.id.entry_amount)
+            private val balance: TextView = view.findViewById(R.id.entry_balance)
+
+            fun bind(entry: EntryItem) {
+                val accentColor = ContextCompat.getColor(itemView.context, if (entry.isCashIn) R.color.success_green else R.color.danger_red)
+                val accentBg = ContextCompat.getColor(itemView.context, if (entry.isCashIn) R.color.success_green_bg else R.color.danger_red_bg)
+
+                iconBg.backgroundTintList = ColorStateList.valueOf(accentBg)
+                icon.setImageResource(if (entry.isCashIn) R.drawable.ic_arrow_up_right else R.drawable.ic_arrow_down_left)
+                icon.imageTintList = ColorStateList.valueOf(accentColor)
+
+                title.text = entry.title
+                meta.text = "  Entry by You · ${entry.timeText}"
+
+                val sign = if (entry.isCashIn) "+" else "-"
+                amount.text = "$sign Rs ${entry.amountText}"
+                amount.setTextColor(accentColor)
+                balance.text = "Bal Rs ${entry.runningBalanceText}"
+
+                itemView.setOnLongClickListener { confirmDelete(entry); true }
+            }
+        }
+
+        private val VIEW_TYPE_HEADER = 0
+        private val VIEW_TYPE_LINE = 1
     }
 }

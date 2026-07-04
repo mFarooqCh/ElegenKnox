@@ -361,12 +361,12 @@
                     android:textColor="#9CA3AF"
                     android:textSize="12sp" />
 
-                <!-- ── Dynamic entry rows + per-date headers injected by Activity ── -->
-                <LinearLayout
+                <!-- ── Entry rows + per-date headers, populated by the Activity's adapter ── -->
+                <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/entry_list_container"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
+                    android:nestedScrollingEnabled="false"
                     android:background="#FFFFFF" />
 
             </LinearLayout>

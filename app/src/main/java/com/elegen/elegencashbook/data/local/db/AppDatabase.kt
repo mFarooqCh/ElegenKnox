@@ -7,7 +7,6 @@ import com.elegen.elegencashbook.data.local.dao.BusinessDao
 import com.elegen.elegencashbook.data.local.dao.TransactionDao
 import com.elegen.elegencashbook.data.local.entity.BookEntity
 import com.elegen.elegencashbook.data.local.entity.BusinessEntity
-import com.elegen.elegencashbook.data.local.entity.CategoryEntity
 import com.elegen.elegencashbook.data.local.entity.TransactionEntity
 
 @Database(
@@ -15,7 +14,6 @@ import com.elegen.elegencashbook.data.local.entity.TransactionEntity
         BusinessEntity::class,
         BookEntity::class,
         TransactionEntity::class,
-        CategoryEntity::class,
     ],
     version = 1,
     exportSchema = true,

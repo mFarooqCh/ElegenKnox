@@ -5,6 +5,7 @@ import android.view.View
 import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -75,12 +76,12 @@ class LoginActivity : AppCompatActivity() {
             when {
                 state.error != null -> {
                     tvError.visibility = View.VISIBLE
-                    tvError.setTextColor(android.graphics.Color.parseColor("#DC2626"))
+                    tvError.setTextColor(ContextCompat.getColor(this, R.color.danger_red))
                     tvError.text = state.error
                 }
                 state.info != null -> {
                     tvError.visibility = View.VISIBLE
-                    tvError.setTextColor(android.graphics.Color.parseColor("#16A34A"))
+                    tvError.setTextColor(ContextCompat.getColor(this, R.color.success_green))
                     tvError.text = state.info
                 }
                 else -> tvError.visibility = View.GONE

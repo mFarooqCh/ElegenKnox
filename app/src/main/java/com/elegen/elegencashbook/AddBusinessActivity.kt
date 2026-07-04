@@ -12,6 +12,7 @@ import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.elegen.elegencashbook.core.ui.setPrimaryEnabled
 import com.elegen.elegencashbook.feature.business.AddBusinessUiEvent
 import com.elegen.elegencashbook.feature.business.AddBusinessViewModel
 import com.google.android.material.button.MaterialButton
@@ -41,9 +42,9 @@ class AddBusinessActivity : AppCompatActivity() {
         val nextButton = findViewById<MaterialButton>(R.id.next_button)
         val backButton = findViewById<android.widget.ImageButton>(R.id.back_button)
 
-        setNextButtonStyle(nextButton, enabled = false)
+        nextButton.setPrimaryEnabled(false)
         businessInput.doAfterTextChanged { text ->
-            setNextButtonStyle(nextButton, enabled = !text.isNullOrBlank())
+            nextButton.setPrimaryEnabled(!text.isNullOrBlank())
         }
 
         backButton.setOnClickListener { finish() }
@@ -55,22 +56,10 @@ class AddBusinessActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.state.collect { state ->
-                    setNextButtonStyle(nextButton, enabled = !state.saving && !businessInput.text.isNullOrBlank())
+                    nextButton.setPrimaryEnabled(!state.saving && !businessInput.text.isNullOrBlank())
                     if (state.done) finish()
                 }
             }
-        }
-    }
-
-    /** Same enabled/disabled palette as the "Add Book" button (bottom_sheet_add_book). */
-    private fun setNextButtonStyle(button: MaterialButton, enabled: Boolean) {
-        button.isEnabled = enabled
-        if (enabled) {
-            button.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#2563EB"))
-            button.setTextColor(android.graphics.Color.WHITE)
-        } else {
-            button.backgroundTintList = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#E5E7EB"))
-            button.setTextColor(android.graphics.Color.parseColor("#6B7280"))
         }
     }
 }

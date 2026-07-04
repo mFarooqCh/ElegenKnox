@@ -68,16 +68,3 @@ data class TransactionEntity(
     val createdByUid: String,
     @Embedded val sync: SyncEnvelope,
 )
-
-/** Minimal placeholder (spec §7); no UI/DAO until reports/categories land. */
-@Entity(
-    tableName = "categories",
-    indices = [Index("bookId")],
-)
-data class CategoryEntity(
-    @PrimaryKey val id: String,
-    val bookId: String,
-    val name: String,
-    val type: String,
-    @Embedded val sync: SyncEnvelope,
-)
