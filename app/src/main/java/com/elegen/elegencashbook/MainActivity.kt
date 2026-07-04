@@ -232,6 +232,7 @@ class MainActivity : AppCompatActivity() {
             putExtra("book_id", book.id)
             putExtra("book_name", book.name)
             putExtra("book_meta", book.metaText)
+            putExtra("business_id", uiState.activeBusiness?.id)
         }
         startActivity(intent)
     }

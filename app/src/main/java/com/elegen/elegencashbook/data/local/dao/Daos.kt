@@ -53,13 +53,17 @@ interface BookDao {
     @Upsert
     suspend fun upsert(entity: BookEntity)
 
+    /**
+     * lastEntryAt is the real wall-clock last-write time (sync.updatedAt), not an entry's
+     * user-picked date (createdAt) — a backdated entry must not make the book look stale.
+     */
     @Query(
         """
         SELECT b.*,
           COALESCE(SUM(CASE WHEN t.type = 'CASH_IN'  AND t.deletedAt IS NULL THEN t.amountPaisa ELSE 0 END), 0) AS totalInPaisa,
           COALESCE(SUM(CASE WHEN t.type = 'CASH_OUT' AND t.deletedAt IS NULL THEN t.amountPaisa ELSE 0 END), 0) AS totalOutPaisa,
           COUNT(CASE WHEN t.deletedAt IS NULL THEN t.id END) AS entryCount,
-          MAX(CASE WHEN t.deletedAt IS NULL THEN t.createdAt END) AS lastEntryAt
+          MAX(b.updatedAt, COALESCE(MAX(CASE WHEN t.deletedAt IS NULL THEN t.updatedAt END), 0)) AS lastEntryAt
         FROM books b
         LEFT JOIN transactions t ON t.bookId = b.id
         WHERE b.businessId = :businessId AND b.deletedAt IS NULL

@@ -361,22 +361,7 @@
                     android:textColor="#9CA3AF"
                     android:textSize="12sp" />
 
-                <!-- ── Date header ── -->
-                <TextView
-                    android:id="@+id/tv_date_header"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingTop="4dp"
-                    android:paddingBottom="4dp"
-                    android:text=""
-                    android:textColor="#374151"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:background="#F0F2F5" />
-
-                <!-- ── Dynamic entry rows injected by Activity ── -->
+                <!-- ── Dynamic entry rows + per-date headers injected by Activity ── -->
                 <LinearLayout
                     android:id="@+id/entry_list_container"
                     android:layout_width="match_parent"

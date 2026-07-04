@@ -10,6 +10,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.activity.enableEdgeToEdge
@@ -48,8 +49,9 @@ class BookDetailsActivity : AppCompatActivity() {
     private lateinit var tvTotalIn:         TextView
     private lateinit var tvTotalOut:        TextView
     private lateinit var tvEntryCount:      TextView
-    private lateinit var tvDateHeader:      TextView
     private lateinit var entryListContainer: LinearLayout
+
+    private var uiState = BookDetailsUiState()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -78,12 +80,13 @@ class BookDetailsActivity : AppCompatActivity() {
         tvTotalIn          = findViewById(R.id.tv_total_in)
         tvTotalOut         = findViewById(R.id.tv_total_out)
         tvEntryCount       = findViewById(R.id.tv_entry_count)
-        tvDateHeader       = findViewById(R.id.tv_date_header)
         entryListContainer = findViewById(R.id.entry_list_container)
 
         findViewById<TextView>(R.id.btn_view_reports).setOnClickListener {
             Toast.makeText(this, "View Reports", Toast.LENGTH_SHORT).show()
         }
+
+        findViewById<ImageButton>(R.id.toolbar_more).setOnClickListener { showBookMenu(it) }
 
         // ── Bottom buttons ────────────────────────────────────────────────
         findViewById<MaterialButton>(R.id.btn_cash_in).setOnClickListener  { showEntryDialog(true)  }
@@ -229,14 +232,104 @@ class BookDetailsActivity : AppCompatActivity() {
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // Book menu: rename / duplicate / add members / move / delete (same actions as Main's list)
+    // ─────────────────────────────────────────────────────────────────────
+    private fun bookName() = findViewById<TextView>(R.id.toolbar_title).text.toString()
+
+    private fun showBookMenu(anchor: View) {
+        val popupWidthPx = (180 * resources.displayMetrics.density).toInt()
+        val popupView = LayoutInflater.from(this).inflate(R.layout.popup_book_menu, null)
+        val popupWindow = PopupWindow(popupView, popupWidthPx, ViewGroup.LayoutParams.WRAP_CONTENT, true).apply {
+            isOutsideTouchable = true
+            isClippingEnabled = true
+            setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        }
+
+        fun action(id: Int, block: () -> Unit) {
+            popupView.findViewById<View>(id).setOnClickListener {
+                popupWindow.dismiss()
+                block()
+            }
+        }
+
+        action(R.id.action_rename) { promptRenameBook() }
+        action(R.id.action_duplicate) {
+            viewModel.onEvent(BookDetailsUiEvent.DuplicateBook)
+            Toast.makeText(this, "\"${bookName()}\" duplicated", Toast.LENGTH_SHORT).show()
+        }
+        action(R.id.action_add_members) {
+            Toast.makeText(this, "Sharing books with members is coming soon", Toast.LENGTH_SHORT).show()
+        }
+        action(R.id.action_move) { promptMoveBook() }
+        action(R.id.action_delete) { confirmDeleteBook() }
+
+        val xOffset = anchor.width - popupWidthPx
+        popupWindow.showAsDropDown(anchor, xOffset, 4)
+    }
+
+    private fun promptRenameBook() {
+        val input = TextInputEditText(this).apply {
+            setText(bookName())
+            setSelection(text?.length ?: 0)
+        }
+        val padding = (16 * resources.displayMetrics.density).toInt()
+        val container = FrameLayout(this).apply {
+            setPadding(padding, padding / 2, padding, 0)
+            addView(input)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Rename book")
+            .setView(container)
+            .setPositiveButton("Save") { _, _ ->
+                val name = input.text?.toString()?.trim().orEmpty()
+                if (name.isNotBlank()) {
+                    viewModel.onEvent(BookDetailsUiEvent.RenameBook(name))
+                    findViewById<TextView>(R.id.toolbar_title).text = name
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun confirmDeleteBook() {
+        AlertDialog.Builder(this)
+            .setTitle("Delete \"${bookName()}\"?")
+            .setMessage("This removes the book and its entries.")
+            .setPositiveButton("Delete") { _, _ ->
+                viewModel.onEvent(BookDetailsUiEvent.DeleteBook)
+                Toast.makeText(this, "Book deleted", Toast.LENGTH_SHORT).show()
+                finish()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun promptMoveBook() {
+        val targets = uiState.otherBusinesses
+        if (targets.isEmpty()) {
+            Toast.makeText(this, "Create another business first to move this book into it", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val names = targets.map { it.name }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Move \"${bookName()}\" to")
+            .setItems(names) { _, index ->
+                viewModel.onEvent(BookDetailsUiEvent.MoveBook(targets[index].id))
+                Toast.makeText(this, "Moved to ${targets[index].name}", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     private fun render(state: BookDetailsUiState) {
+        uiState = state
         val count = state.entryCount
         tvNetBalance.text    = "Rs ${state.netText}"
         tvEntriesInBook.text = "$count ${if (count == 1) "entry" else "entries"} this book"
         tvTotalIn.text       = "Rs ${state.totalInText}"
         tvTotalOut.text      = "Rs ${state.totalOutText}"
         tvEntryCount.text    = "Showing $count ${if (count == 1) "entry" else "entries"}"
-        tvDateHeader.text    = state.dateHeader
         refreshEntryList(state.entries)
     }
 
@@ -246,7 +339,24 @@ class BookDetailsActivity : AppCompatActivity() {
 
         fun px(dp: Int) = (dp * resources.displayMetrics.density).toInt()
 
+        var lastDate: String? = null
+
         entries.forEach { entry ->
+
+            // ── Date header (one per date group, entries are already date-ordered) ──
+            if (entry.dateText != lastDate) {
+                lastDate = entry.dateText
+                entryListContainer.addView(TextView(this).apply {
+                    text = entry.dateText
+                    textSize = 13f
+                    setTypeface(null, Typeface.BOLD)
+                    setTextColor(Color.parseColor("#374151"))
+                    setBackgroundColor(Color.parseColor("#F0F2F5"))
+                    setPadding(px(16), px(4), px(16), px(4))
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                })
+            }
 
             // ── Divider ──
             entryListContainer.addView(View(this).apply {

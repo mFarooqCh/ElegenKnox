@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -55,8 +54,8 @@ class DaoTest {
 
     private fun entry(
         id: String, bookId: String, type: String, paisa: Long,
-        createdBy: String = "u1", createdAt: Long = 1L, deletedAt: Long? = null,
-    ) = TransactionEntity(id, bookId, type, paisa, null, "", createdAt, createdBy, envelope(deletedAt))
+        createdBy: String = "u1", createdAt: Long = 1L, updatedAt: Long = createdAt, deletedAt: Long? = null,
+    ) = TransactionEntity(id, bookId, type, paisa, null, "", createdAt, createdBy, envelope(deletedAt).copy(updatedAt = updatedAt))
 
     @Test
     fun `business book counts exclude deleted books`() = runBlocking {
@@ -113,7 +112,8 @@ class DaoTest {
         db.bookDao().upsert(book("other", "biz"))
         db.transactionDao().upsert(entry("t1", "bk", "CASH_IN", 1000, createdAt = 1))
         db.transactionDao().upsert(entry("t2", "bk", "CASH_IN", 20, createdAt = 2))
-        db.transactionDao().upsert(entry("t3", "bk", "CASH_OUT", 300, createdAt = 3))
+        // Backdated entry: user picked an old date (createdAt = 3) but it was actually saved just now.
+        db.transactionDao().upsert(entry("t3", "bk", "CASH_OUT", 300, createdAt = 3, updatedAt = 500))
         db.transactionDao().upsert(entry("t4", "bk", "CASH_IN", 7777, createdAt = 4, deletedAt = 9L)) // tombstoned
         db.transactionDao().upsert(entry("t5", "other", "CASH_IN", 50000, createdAt = 5))
 
@@ -121,7 +121,8 @@ class DaoTest {
         assertEquals(1020L, row.totalInPaisa)
         assertEquals(300L, row.totalOutPaisa)
         assertEquals(3, row.entryCount)
-        assertEquals(3L, row.lastEntryAt)
+        // Reflects the real write time (500), not the backdated entry's chosen date (3).
+        assertEquals(500L, row.lastEntryAt)
     }
 
     @Test
@@ -133,7 +134,8 @@ class DaoTest {
         assertEquals(0L, row.totalInPaisa)
         assertEquals(0L, row.totalOutPaisa)
         assertEquals(0, row.entryCount)
-        assertNull(row.lastEntryAt)
+        // No entries yet: falls back to the book's own last-touched time, never null.
+        assertEquals(1L, row.lastEntryAt)
     }
 
     @Test
