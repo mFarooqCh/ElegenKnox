@@ -13,6 +13,9 @@
 .externalNativeBuild
 .cxx
 local.properties
+*.jks
+*.keystore
+keystore.properties
 .agents/
 .vscode/
 .kotlin/
