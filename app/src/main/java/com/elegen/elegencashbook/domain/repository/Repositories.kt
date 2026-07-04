@@ -89,10 +89,19 @@ interface LocalDataMaintenance {
 }
 
 /**
- * Requests the outbox be drained to the cloud (spec §6.3). Fire-and-forget: the impl enqueues a
- * network-constrained background worker, so callers never block on the network (offline-safe).
+ * Requests outbox drain / remote pull (spec §6.3, §6.4). Fire-and-forget: impls enqueue
+ * network-constrained background workers, so callers never block on the network (offline-safe).
  * Kept as a pure interface so repositories (and their unit tests) don't depend on WorkManager.
  */
 interface SyncScheduler {
     fun requestPush()
+
+    /** One-off delta pull (spec §6.4) — called after login for initial hydration. */
+    fun requestPull()
+
+    /** Periodic delta poll for background/missed updates; call once at process start. */
+    fun schedulePeriodicPull()
+
+    /** Periodic tombstone purge (spec §6.6); call once at process start. */
+    fun scheduleCleanup()
 }

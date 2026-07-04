@@ -2,6 +2,7 @@ package com.elegen.elegencashbook.data.local.prefs
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -55,6 +56,14 @@ class AppPreferences @Inject constructor(
 
     private val deviceIdMutex = Mutex()
     @Volatile private var cachedDeviceId: String? = null
+
+    /** Delta-pull cursor per entity type (spec §6.4); 0 = never pulled → first pull is a full hydration. */
+    suspend fun lastPulledAt(entityType: String): Long =
+        context.dataStore.data.first()[longPreferencesKey("last_pulled_$entityType")] ?: 0L
+
+    suspend fun setLastPulledAt(entityType: String, epochMillis: Long) {
+        context.dataStore.edit { it[longPreferencesKey("last_pulled_$entityType")] = epochMillis }
+    }
 
     /** Stable per-install id for the sync envelope / LWW tiebreak (spec §6.6). */
     suspend fun deviceId(): String {

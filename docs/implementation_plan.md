@@ -120,11 +120,11 @@
 - [x] Outbox unit tests: idempotent replay, ordering, dead-letter transition, markSynced version-guard, atomic-rollback-of-queue-row (79 tests, 0 fail).
 
 **Proof Gate P4**
-- [ ] Airplane ON → add 3 entries → airplane OFF → rows appear in Supabase (verify in Studio/psql) with server `updated_at`.
-- [ ] Kill app mid-sync → relaunch → no duplicates (idempotency), queue drains.
-- [ ] Stop Supabase (docker stop) → writes keep succeeding locally; start Supabase → auto-catch-up.
-- [ ] Second user cannot read/write first user's rows (RLS owner check, psql test).
-- [ ] **Regression:** P0–P3 proofs pass (esp. offline usability).
+- [x] Airplane ON → add entries → airplane OFF → rows appear in Supabase with server `updated_at` (2026-07-04, user-performed; transactions count rose 34→52, confirmed via MCP).
+- [x] Kill app mid-sync → relaunch → no duplicates, queue drains (2026-07-04: post-restart `Draining 0 pending rows`, 52/52 distinct ids, zero dead-letters in logcat).
+- [ ] Stop Supabase (docker stop) → writes keep succeeding locally; start Supabase → auto-catch-up. **Not applicable as tested — project is hosted, not local Docker (P3 decision); would need pausing the hosted project via Supabase dashboard/MCP to simulate. Not yet run.**
+- [x] Second user cannot read/write first user's rows (2026-07-04, curl against PostgREST with 2 real user JWTs: spoofed-owner insert → 403 RLS violation; cross-user update → 0 rows affected; cross-user delete → 403, DELETE not even granted to `authenticated`).
+- [ ] **Regression:** P0–P3 proofs pass (esp. offline usability). Not formally re-run this session.
 
 ---
 
@@ -133,17 +133,17 @@
 **Goal:** same account on two devices converges. Restore-after-reinstall works (constitution §3).
 
 **Checklist**
-- [ ] `SyncPullWorker`: delta pull `updated_at > lastPulledAt` per table; cursor in DataStore (spec §6.4, §8.8).
-- [ ] Conflict resolver (spec §6.6): LWW on server `updatedAt`, `deviceId` tiebreak; tombstones propagate deletes; table-driven unit tests.
-- [ ] Initial hydration: fresh install + login → full pull rebuilds local DB.
-- [ ] `CleanupWorker`: purge old tombstones + SUCCESS outbox rows (idle/charging).
+- [x] `SyncPullWorker`: delta pull `updated_at > lastPulledAt` per table; cursor in DataStore (spec §6.4, §8.8). One-time (login/app-start) + 15-min periodic (WorkManager minimum interval; Realtime foreground push is P7, not needed for this gate).
+- [x] Conflict resolver (spec §6.6): `ConflictResolver` — LWW on server `updatedAt`, `deviceId` tiebreak; tombstones are just a row with `deletedAt` set so they hit the same resolve path, no special case; 7 table-driven unit tests (`ConflictResolverTest`).
+- [x] Initial hydration: fresh install + login → full pull rebuilds local DB. No special-cased code path — cursor defaults to 0, so `updated_at > 0` naturally pulls every row on first pull.
+- [x] `CleanupWorker`: purges tombstones older than 30 days (idle+charging, daily). No separate SUCCESS-outbox purge needed — outbox rows are already deleted the instant they push (see P4 `SyncPushWorker`), so there's nothing left to age out there.
 
 **Proof Gate P5**
-- [ ] Device A adds entry → appears on device B (two emulators, same account).
-- [ ] Both edit same entry offline → both online → same winner on both (LWW), no duplicate.
-- [ ] Delete on A → gone on B.
-- [ ] Uninstall → reinstall → login → all data restored from cloud.
-- [ ] **Regression:** P0–P4 proofs pass.
+- [ ] Device A adds entry → appears on device B (two emulators, same account). *Not yet run on-device — code path verified via unit tests only.*
+- [ ] Both edit same entry offline → both online → same winner on both (LWW), no duplicate. *Not yet run on-device.*
+- [ ] Delete on A → gone on B. *Not yet run on-device — falls out for free since `observe*` queries already filter `deletedAt IS NULL`.*
+- [ ] Uninstall → reinstall → login → all data restored from cloud. *Not yet run on-device.*
+- [ ] **Regression:** P0–P4 proofs pass. *Not re-run this session.*
 
 ---
 

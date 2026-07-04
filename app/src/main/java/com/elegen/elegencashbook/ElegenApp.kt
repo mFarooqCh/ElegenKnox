@@ -19,5 +19,8 @@ class ElegenApp : Application() {
         // Drains anything still PENDING from a prior session the app never got to push (e.g. was
         // killed before a network-constrained worker could run) — no-ops if guest/unconfigured.
         syncScheduler.requestPush()
+        syncScheduler.requestPull()
+        syncScheduler.schedulePeriodicPull()
+        syncScheduler.scheduleCleanup()
     }
 }

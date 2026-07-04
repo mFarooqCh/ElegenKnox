@@ -66,8 +66,10 @@ class IdentityManager @Inject constructor(
                         // Claim first so the user's list is complete the moment the uid becomes active.
                         reassignOwner(GUEST_UID, session.user.id)
                         _activeUid.value = session.user.id
-                        // Sync is paused while guest; first login drains everything queued so far.
+                        // Sync is paused while guest; first login drains everything queued so far
+                        // and pulls anything from other devices/reinstalls (spec §6.4 hydration).
                         syncScheduler.requestPush()
+                        syncScheduler.requestPull()
                     }
                     SessionState.Guest -> _activeUid.value = GUEST_UID
                     SessionState.Loading -> Unit // keep current until resolved

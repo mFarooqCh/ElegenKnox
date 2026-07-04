@@ -199,6 +199,7 @@ class MainActivity : AppCompatActivity() {
             btnLogout.setOnClickListener {
                 viewModel.onEvent(MainUiEvent.SignOutKeepData)
                 dialog.dismiss()
+                startActivity(Intent(this, LoginActivity::class.java))
             }
             btnLogoutWipe.setOnClickListener {
                 dialog.dismiss()
@@ -268,13 +269,16 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private fun showAddBookSheet() {
+    private fun showAddBookSheet(bookToRename: BookItem? = null) {
         val dialog = BottomSheetDialog(this)
         val view = layoutInflater.inflate(R.layout.bottom_sheet_add_book, null)
+        val title = view.findViewById<TextView>(R.id.book_sheet_title)
         val bookNameInput = view.findViewById<TextInputEditText>(R.id.book_name_input)
         val addBookButton = view.findViewById<MaterialButton>(R.id.add_book_button)
         val bookNameLayout = view.findViewById<TextInputLayout>(R.id.book_name_layout)
         val closeButton = view.findViewById<ImageButton>(R.id.close_book_sheet)
+        val suggestionsLabel = view.findViewById<TextView>(R.id.book_suggestions_label)
+        val suggestionsGroup = view.findViewById<View>(R.id.book_suggestions)
         val suggestionChips = listOf(
             view.findViewById<Chip>(R.id.chip_june),
             view.findViewById<Chip>(R.id.chip_petty),
@@ -293,10 +297,20 @@ class MainActivity : AppCompatActivity() {
         }
         bookNameInput.addTextChangedListener(watcher)
 
-        suggestionChips.forEach { chip ->
-            chip.setOnClickListener {
-                bookNameInput.setText(chip.text)
-                bookNameInput.setSelection(bookNameInput.text?.length ?: 0)
+        if (bookToRename != null) {
+            title.text = "Rename Book"
+            addBookButton.text = "RENAME"
+            suggestionsLabel.visibility = View.GONE
+            suggestionsGroup.visibility = View.GONE
+            bookNameInput.setText(bookToRename.name)
+            bookNameInput.setSelection(bookNameInput.text?.length ?: 0)
+            addBookButton.setPrimaryEnabled(true)
+        } else {
+            suggestionChips.forEach { chip ->
+                chip.setOnClickListener {
+                    bookNameInput.setText(chip.text)
+                    bookNameInput.setSelection(bookNameInput.text?.length ?: 0)
+                }
             }
         }
 
@@ -304,8 +318,12 @@ class MainActivity : AppCompatActivity() {
         addBookButton.setOnClickListener {
             val name = bookNameInput.text?.toString()?.trim().orEmpty()
             if (name.isNotBlank()) {
-                viewModel.onEvent(MainUiEvent.AddBook(name))
-                booksRecyclerView.scrollToPosition(0)
+                if (bookToRename != null) {
+                    viewModel.onEvent(MainUiEvent.RenameBook(bookToRename.id, name))
+                } else {
+                    viewModel.onEvent(MainUiEvent.AddBook(name))
+                    booksRecyclerView.scrollToPosition(0)
+                }
                 dialog.dismiss()
             } else {
                 bookNameLayout.error = "Name is required"
@@ -384,7 +402,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        action(R.id.action_rename) { promptRenameBook(book) }
+        action(R.id.action_rename) { showAddBookSheet(bookToRename = book) }
         action(R.id.action_duplicate) {
             viewModel.onEvent(MainUiEvent.DuplicateBook(book.id))
             Toast.makeText(this, "\"${book.name}\" duplicated", Toast.LENGTH_SHORT).show()
@@ -397,27 +415,6 @@ class MainActivity : AppCompatActivity() {
 
         val xOffset = anchor.width - popupWidthPx
         popupWindow.showAsDropDown(anchor, xOffset, 4)
-    }
-
-    private fun promptRenameBook(book: BookItem) {
-        val input = TextInputEditText(this).apply {
-            setText(book.name)
-            setSelection(text?.length ?: 0)
-        }
-        val padding = (16 * resources.displayMetrics.density).toInt()
-        val container = android.widget.FrameLayout(this).apply {
-            setPadding(padding, padding / 2, padding, 0)
-            addView(input)
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Rename book")
-            .setView(container)
-            .setPositiveButton("Save") { _, _ ->
-                val name = input.text?.toString()?.trim().orEmpty()
-                if (name.isNotBlank()) viewModel.onEvent(MainUiEvent.RenameBook(book.id, name))
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
     }
 
     private fun confirmDeleteBook(book: BookItem) {

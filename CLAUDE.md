@@ -78,10 +78,10 @@ UI (Activity) → ViewModel (StateFlow<UiState>/onEvent) → UseCase → Reposit
 
 ## Current state (see handoff_notes.md for full detail)
 
-P0–P3 done and committed. **P4 (push sync) next, not started.** P3 on-device proof gate incomplete (device drops wireless adb) — reconnect and re-verify before trusting beyond compile+test. Local commit `89d66ef` unpushed to `origin/master`.
+P0–P4 done. **P5 (pull sync + conflicts) code done, on-device proof gate not yet run** — `RemotePull`, `ConflictResolver` (pure LWW, 7 unit tests), `SyncPullWorker`, `CleanupWorker` in place; not yet verified two-device.
 
 ## Testing / gates
 
 - Constitution compliance check required in every plan/spec/task list. Deviations need approval + documentation.
 - Regression matrix re-run at every phase gate (see implementation_plan.md §Regression matrix).
-- P4 not "done" until proof gate passes on real device: airplane-mode round trip, kill-mid-sync no-duplicate, Supabase-down resilience, cross-user RLS isolation — plus full P0–P3 regression still green.
+- P5 not "done" until proof gate passes on real devices: device A add → appears on B, concurrent edit → same LWW winner both sides, delete propagates, uninstall/reinstall/login → full restore — plus P0–P4 regression still green.

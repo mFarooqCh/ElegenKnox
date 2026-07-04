@@ -45,6 +45,10 @@ interface BusinessDao {
     /** Marks SYNCED only if the row hasn't been re-edited since it was pushed (version guard). */
     @Query("UPDATE businesses SET syncState = 'SYNCED' WHERE id = :id AND version = :version")
     suspend fun markSynced(id: String, version: Long)
+
+    /** CleanupWorker: hard-purge tombstones older than the retention cutoff (spec §6.6). */
+    @Query("DELETE FROM businesses WHERE deletedAt IS NOT NULL AND deletedAt < :cutoff")
+    suspend fun purgeTombstones(cutoff: Long)
 }
 
 data class BookWithBalanceRow(
@@ -88,6 +92,9 @@ interface BookDao {
 
     @Query("UPDATE books SET syncState = 'SYNCED' WHERE id = :id AND version = :version")
     suspend fun markSynced(id: String, version: Long)
+
+    @Query("DELETE FROM books WHERE deletedAt IS NOT NULL AND deletedAt < :cutoff")
+    suspend fun purgeTombstones(cutoff: Long)
 }
 
 @Dao
@@ -117,6 +124,9 @@ interface TransactionDao {
 
     @Query("UPDATE transactions SET syncState = 'SYNCED' WHERE id = :id AND version = :version")
     suspend fun markSynced(id: String, version: Long)
+
+    @Query("DELETE FROM transactions WHERE deletedAt IS NOT NULL AND deletedAt < :cutoff")
+    suspend fun purgeTombstones(cutoff: Long)
 }
 
 @Dao

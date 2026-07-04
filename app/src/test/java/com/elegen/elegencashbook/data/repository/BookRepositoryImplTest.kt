@@ -34,6 +34,9 @@ private class FakeIdentity(uid: String) : ActiveIdentity {
 /** No WorkManager in unit tests; the push trigger is verified separately at the worker level. */
 private object NoopScheduler : SyncScheduler {
     override fun requestPush() = Unit
+    override fun requestPull() = Unit
+    override fun schedulePeriodicPull() = Unit
+    override fun scheduleCleanup() = Unit
 }
 
 /** Delegates everything to [real] except upsert, which fails on the Nth+1 call — simulates a crash mid-copy. */

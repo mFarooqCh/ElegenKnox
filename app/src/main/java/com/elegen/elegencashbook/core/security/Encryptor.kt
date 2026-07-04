@@ -7,6 +7,7 @@ import com.google.crypto.tink.RegistryConfiguration
 import com.google.crypto.tink.aead.AeadConfig
 import com.google.crypto.tink.integration.android.AndroidKeysetManager
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.security.KeyStore
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -27,6 +28,23 @@ class TinkEncryptor @Inject constructor(
 
     private val aead: Aead by lazy {
         AeadConfig.register()
+        try {
+            buildAead()
+        } catch (e: Exception) {
+            // Keystore master key invalidated/reset (device security change, keystore wipe) — the
+            // wrapped keyset can never be unwrapped again. Same "corrupt, clear it" contract
+            // EncryptedSessionStorage already applies to unreadable session data; only recovery
+            // is a fresh keyset AND a fresh master key — reusing the same alias without deleting
+            // the broken Keystore entry first just fails again with the identical exception.
+            context.getSharedPreferences("elegen_keyset_prefs", Context.MODE_PRIVATE).edit().clear().apply()
+            runCatching {
+                KeyStore.getInstance("AndroidKeyStore").apply { load(null) }.deleteEntry("elegen_master_key")
+            }
+            buildAead()
+        }
+    }
+
+    private fun buildAead(): Aead =
         AndroidKeysetManager.Builder()
             .withSharedPref(context, "elegen_session_keyset", "elegen_keyset_prefs")
             .withKeyTemplate(KeyTemplates.get("AES256_GCM"))
@@ -34,7 +52,6 @@ class TinkEncryptor @Inject constructor(
             .build()
             .keysetHandle
             .getPrimitive(RegistryConfiguration.get(), Aead::class.java)
-    }
 
     override fun encrypt(plaintext: ByteArray): ByteArray = aead.encrypt(plaintext, null)
     override fun decrypt(ciphertext: ByteArray): ByteArray = aead.decrypt(ciphertext, null)

@@ -25,6 +25,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.elegen.elegencashbook.core.money.Money
+import com.elegen.elegencashbook.core.ui.setPrimaryEnabled
 import com.elegen.elegencashbook.feature.book.BookDetailsUiEvent
 import com.elegen.elegencashbook.feature.book.BookDetailsUiState
 import com.elegen.elegencashbook.feature.book.BookDetailsViewModel
@@ -269,27 +270,47 @@ class BookDetailsActivity : AppCompatActivity() {
     }
 
     private fun promptRenameBook() {
-        val input = TextInputEditText(this).apply {
-            setText(bookName())
-            setSelection(text?.length ?: 0)
-        }
-        val padding = (16 * resources.displayMetrics.density).toInt()
-        val container = FrameLayout(this).apply {
-            setPadding(padding, padding / 2, padding, 0)
-            addView(input)
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Rename book")
-            .setView(container)
-            .setPositiveButton("Save") { _, _ ->
-                val name = input.text?.toString()?.trim().orEmpty()
-                if (name.isNotBlank()) {
-                    viewModel.onEvent(BookDetailsUiEvent.RenameBook(name))
-                    findViewById<TextView>(R.id.toolbar_title).text = name
-                }
+        val dialog = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_add_book, null)
+        val title = view.findViewById<TextView>(R.id.book_sheet_title)
+        val bookNameInput = view.findViewById<TextInputEditText>(R.id.book_name_input)
+        val renameButton = view.findViewById<MaterialButton>(R.id.add_book_button)
+        val bookNameLayout = view.findViewById<TextInputLayout>(R.id.book_name_layout)
+        val closeButton = view.findViewById<ImageButton>(R.id.close_book_sheet)
+        view.findViewById<View>(R.id.book_suggestions_label).visibility = View.GONE
+        view.findViewById<View>(R.id.book_suggestions).visibility = View.GONE
+
+        title.text = "Rename Book"
+        renameButton.text = "RENAME"
+        bookNameInput.setText(bookName())
+        bookNameInput.setSelection(bookNameInput.text?.length ?: 0)
+        renameButton.setPrimaryEnabled(true)
+        bookNameInput.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val hasText = !s.isNullOrBlank()
+                renameButton.setPrimaryEnabled(hasText)
+                if (hasText) bookNameLayout.error = null
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+            override fun afterTextChanged(s: android.text.Editable?) = Unit
+        })
+
+        closeButton.setOnClickListener { dialog.dismiss() }
+        renameButton.setOnClickListener {
+            val name = bookNameInput.text?.toString()?.trim().orEmpty()
+            if (name.isNotBlank()) {
+                viewModel.onEvent(BookDetailsUiEvent.RenameBook(name))
+                findViewById<TextView>(R.id.toolbar_title).text = name
+                dialog.dismiss()
+            } else {
+                bookNameLayout.error = "Name is required"
+                bookNameLayout.boxStrokeColor = ContextCompat.getColor(this, R.color.danger_red)
+                bookNameInput.requestFocus()
+            }
+        }
+
+        dialog.setContentView(view)
+        dialog.show()
     }
 
     private fun confirmDeleteBook() {
