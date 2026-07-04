@@ -17,15 +17,28 @@
         android:theme="@style/Theme.ElegenCashBook">
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Supabase email-confirm / magic-link redirect target (see AUTH_DEEP_LINK_SCHEME/HOST). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="elegencashbook" android:host="login-callback" />
+            </intent-filter>
         </activity>
         <activity
             android:name=".AddBusinessActivity"
+            android:exported="false" />
+        <activity
+            android:name=".LoginActivity"
             android:exported="false" />
         <activity
             android:name=".BookDetailsActivity"

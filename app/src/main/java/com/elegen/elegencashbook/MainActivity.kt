@@ -23,6 +23,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.elegen.elegencashbook.data.remote.supabase.SupabaseClientHolder
 import com.elegen.elegencashbook.feature.main.BookItem
 import com.elegen.elegencashbook.feature.main.BusinessItem
 import com.elegen.elegencashbook.feature.main.MainUiEvent
@@ -34,22 +35,31 @@ import com.google.android.material.chip.Chip
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import dagger.hilt.android.AndroidEntryPoint
+import io.github.jan.supabase.auth.handleDeeplinks
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
     private val viewModel: MainViewModel by viewModels()
 
+    @Inject lateinit var supabaseClientHolder: SupabaseClientHolder
+
     private lateinit var booksRecyclerView: RecyclerView
     private lateinit var booksAdapter: BookAdapter
     private lateinit var businessTitle: TextView
+    private lateinit var tipCard: View
+    private lateinit var emptyBooksCard: View
 
     private var uiState = MainUiState()
     private var businessSheetAdapter: BusinessAdapter? = null
+    private var loginPromptShown = false
+    private var tipDismissed = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleAuthDeepLink(intent)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
@@ -65,10 +75,26 @@ class MainActivity : AppCompatActivity() {
         val addBookButton = findViewById<MaterialButton>(R.id.add_book_button)
         val businessSelector = findViewById<View>(R.id.business_selector)
         booksRecyclerView = findViewById(R.id.books_list)
+        tipCard = findViewById(R.id.tip_card)
+        emptyBooksCard = findViewById(R.id.empty_books_card)
 
         booksAdapter = BookAdapter()
         booksRecyclerView.layoutManager = LinearLayoutManager(this)
         booksRecyclerView.adapter = booksAdapter
+
+        // Top-bar icon: book-collaboration stub (P6). Account/login lives only behind "Settings".
+        findViewById<ImageButton>(R.id.add_members_button).setOnClickListener {
+            Toast.makeText(this, "Sharing books with members is coming soon", Toast.LENGTH_SHORT).show()
+        }
+
+        findViewById<com.google.android.material.bottomnavigation.BottomNavigationView>(R.id.bottom_navigation)
+            .setOnItemSelectedListener { item ->
+                when (item.itemId) {
+                    R.id.nav_settings -> { showAccountSheet(); false } // don't keep Settings selected
+                    R.id.nav_help -> { Toast.makeText(this, "Help coming soon", Toast.LENGTH_SHORT).show(); false }
+                    else -> true
+                }
+            }
 
         businessSelector.setOnClickListener { showBusinessSheet() }
         addBookButton.setOnClickListener {
@@ -81,10 +107,20 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<View>(R.id.tip_dismiss_button).setOnClickListener {
-            findViewById<View>(R.id.tip_card).visibility = View.GONE
+            tipDismissed = true
+            tipCard.visibility = View.GONE
         }
         findViewById<View>(R.id.hero_dismiss_button).setOnClickListener {
             findViewById<View>(R.id.hero_card).visibility = View.GONE
+        }
+
+        listOf(
+            findViewById<Chip>(R.id.chip_suggest_june),
+            findViewById<Chip>(R.id.chip_suggest_petty),
+            findViewById<Chip>(R.id.chip_suggest_project),
+            findViewById<Chip>(R.id.chip_suggest_client),
+        ).forEach { chip ->
+            chip.setOnClickListener { quickAddBook(chip.text.toString()) }
         }
 
         lifecycleScope.launch {
@@ -94,11 +130,101 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleAuthDeepLink(intent)
+    }
+
+    /** Email-confirm / magic-link redirect lands here instead of a bare browser page. */
+    private fun handleAuthDeepLink(intent: Intent) {
+        val client = supabaseClientHolder.client ?: return
+        client.handleDeeplinks(
+            intent = intent,
+            onSessionSuccess = { Toast.makeText(this, "Signed in", Toast.LENGTH_SHORT).show() },
+            onError = { Toast.makeText(this, "Sign-in link invalid or expired", Toast.LENGTH_SHORT).show() },
+        )
+    }
+
+    private fun quickAddBook(name: String) {
+        if (uiState.activeBusiness == null) {
+            Toast.makeText(this, "Create a business first", Toast.LENGTH_SHORT).show()
+            showBusinessSheet()
+        } else {
+            viewModel.onEvent(MainUiEvent.AddBook(name))
+            booksRecyclerView.scrollToPosition(0)
+        }
+    }
+
     private fun render(state: MainUiState) {
         uiState = state
         businessTitle.text = state.activeBusiness?.name ?: "Add a business"
         booksAdapter.submit(state.books)
         businessSheetAdapter?.submit(state.businesses)
+
+        if (state.books.isEmpty()) {
+            tipCard.visibility = View.GONE
+            emptyBooksCard.visibility = View.VISIBLE
+        } else {
+            tipCard.visibility = if (tipDismissed) View.GONE else View.VISIBLE
+            emptyBooksCard.visibility = View.GONE
+        }
+
+        if (state.promptLogin && !loginPromptShown) {
+            loginPromptShown = true
+            startActivity(Intent(this, LoginActivity::class.java))
+        }
+    }
+
+    private fun showAccountSheet() {
+        val dialog = BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.bottom_sheet_account, null)
+        val account = uiState.account
+
+        val identity = view.findViewById<View>(R.id.account_identity)
+        val guestHint = view.findViewById<TextView>(R.id.account_guest_hint)
+        val btnLogin = view.findViewById<MaterialButton>(R.id.btn_account_login)
+        val btnLogout = view.findViewById<MaterialButton>(R.id.btn_account_logout)
+        val btnLogoutWipe = view.findViewById<MaterialButton>(R.id.btn_account_logout_wipe)
+
+        if (account.loggedIn) {
+            identity.visibility = View.VISIBLE
+            btnLogout.visibility = View.VISIBLE
+            btnLogoutWipe.visibility = View.VISIBLE
+            view.findViewById<TextView>(R.id.account_email).text = account.email ?: account.label
+            view.findViewById<TextView>(R.id.account_phone).text = account.phone ?: "No phone added"
+
+            btnLogout.setOnClickListener {
+                viewModel.onEvent(MainUiEvent.SignOutKeepData)
+                dialog.dismiss()
+            }
+            btnLogoutWipe.setOnClickListener {
+                dialog.dismiss()
+                confirmWipe()
+            }
+        } else {
+            guestHint.visibility = View.VISIBLE
+            btnLogin.visibility = View.VISIBLE
+            btnLogin.setOnClickListener {
+                dialog.dismiss()
+                startActivity(Intent(this, LoginActivity::class.java))
+            }
+        }
+
+        view.findViewById<ImageButton>(R.id.close_account_sheet).setOnClickListener { dialog.dismiss() }
+        dialog.setContentView(view)
+        dialog.show()
+    }
+
+    private fun confirmWipe() {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Remove all local data?")
+            .setMessage("This signs you out and deletes every business, book and entry stored on this device. This cannot be undone here.")
+            .setPositiveButton("Delete everything") { _, _ ->
+                viewModel.onEvent(MainUiEvent.SignOutWipeData)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun showBookDetails(book: BookItem) {
@@ -257,21 +383,78 @@ class MainActivity : AppCompatActivity() {
             setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
         }
 
-        fun action(id: Int, message: String) {
+        fun action(id: Int, block: () -> Unit) {
             popupView.findViewById<View>(id).setOnClickListener {
-                Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
                 popupWindow.dismiss()
+                block()
             }
         }
 
-        action(R.id.action_rename, "Rename ${book.name}")
-        action(R.id.action_duplicate, "Duplicate ${book.name}")
-        action(R.id.action_add_members, "Add Members to ${book.name}")
-        action(R.id.action_move, "Move ${book.name}")
-        action(R.id.action_delete, "Delete ${book.name}")
+        action(R.id.action_rename) { promptRenameBook(book) }
+        action(R.id.action_duplicate) {
+            viewModel.onEvent(MainUiEvent.DuplicateBook(book.id))
+            Toast.makeText(this, "\"${book.name}\" duplicated", Toast.LENGTH_SHORT).show()
+        }
+        action(R.id.action_add_members) {
+            Toast.makeText(this, "Sharing books with members is coming soon", Toast.LENGTH_SHORT).show()
+        }
+        action(R.id.action_move) { promptMoveBook(book) }
+        action(R.id.action_delete) { confirmDeleteBook(book) }
 
         val xOffset = anchor.width - popupWidthPx
         popupWindow.showAsDropDown(anchor, xOffset, 4)
+    }
+
+    private fun promptRenameBook(book: BookItem) {
+        val input = TextInputEditText(this).apply {
+            setText(book.name)
+            setSelection(text?.length ?: 0)
+        }
+        val padding = (16 * resources.displayMetrics.density).toInt()
+        val container = android.widget.FrameLayout(this).apply {
+            setPadding(padding, padding / 2, padding, 0)
+            addView(input)
+        }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Rename book")
+            .setView(container)
+            .setPositiveButton("Save") { _, _ ->
+                val name = input.text?.toString()?.trim().orEmpty()
+                if (name.isNotBlank()) viewModel.onEvent(MainUiEvent.RenameBook(book.id, name))
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun confirmDeleteBook(book: BookItem) {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Delete \"${book.name}\"?")
+            .setMessage("You can undo right after deleting.")
+            .setPositiveButton("Delete") { _, _ ->
+                viewModel.onEvent(MainUiEvent.DeleteBook(book.id))
+                com.google.android.material.snackbar.Snackbar.make(booksRecyclerView, "Book deleted", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                    .setAction("Undo") { viewModel.onEvent(MainUiEvent.RestoreBook(book.id)) }
+                    .show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun promptMoveBook(book: BookItem) {
+        val targets = uiState.businesses.filterNot { it.isActive }
+        if (targets.isEmpty()) {
+            Toast.makeText(this, "Create another business first to move books into it", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val names = targets.map { it.name }.toTypedArray()
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Move \"${book.name}\" to")
+            .setItems(names) { _, index ->
+                viewModel.onEvent(MainUiEvent.MoveBook(book.id, targets[index].id))
+                Toast.makeText(this, "Moved to ${targets[index].name}", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private inner class BookAdapter : RecyclerView.Adapter<BookAdapter.BookViewHolder>() {

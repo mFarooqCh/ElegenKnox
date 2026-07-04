@@ -2,8 +2,15 @@ package com.elegen.elegencashbook.data.di
 
 import android.content.Context
 import androidx.room.Room
+import com.elegen.elegencashbook.core.common.AppScope
 import com.elegen.elegencashbook.core.logging.AndroidLogger
 import com.elegen.elegencashbook.core.logging.Logger
+import com.elegen.elegencashbook.core.security.Encryptor
+import com.elegen.elegencashbook.core.security.TinkEncryptor
+import com.elegen.elegencashbook.data.remote.supabase.AuthRepositoryImpl
+import com.elegen.elegencashbook.data.repository.LocalDataMaintenanceImpl
+import com.elegen.elegencashbook.domain.repository.AuthRepository
+import com.elegen.elegencashbook.domain.repository.LocalDataMaintenance
 import com.elegen.elegencashbook.data.local.dao.BookDao
 import com.elegen.elegencashbook.data.local.dao.BusinessDao
 import com.elegen.elegencashbook.data.local.dao.TransactionDao
@@ -22,7 +29,20 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import javax.inject.Singleton
+
+@Module
+@InstallIn(SingletonComponent::class)
+object CoroutineModule {
+
+    @Provides
+    @Singleton
+    @AppScope
+    fun provideAppScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+}
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -56,4 +76,13 @@ abstract class BindingsModule {
 
     @Binds @Singleton
     abstract fun bindLogger(impl: AndroidLogger): Logger
+
+    @Binds @Singleton
+    abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
+
+    @Binds @Singleton
+    abstract fun bindLocalDataMaintenance(impl: LocalDataMaintenanceImpl): LocalDataMaintenance
+
+    @Binds @Singleton
+    abstract fun bindEncryptor(impl: TinkEncryptor): Encryptor
 }

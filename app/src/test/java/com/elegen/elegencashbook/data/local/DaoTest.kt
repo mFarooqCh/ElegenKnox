@@ -1,5 +1,6 @@
 package com.elegen.elegencashbook.data.local
 
+import android.app.Application
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.elegen.elegencashbook.data.local.db.AppDatabase
@@ -18,9 +19,12 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Runs on JVM via Robolectric (JUnit4, executed by the vintage engine). */
+/**
+ * Runs on JVM via Robolectric (JUnit4, executed by the vintage engine).
+ * Uses a plain Application (not ElegenApp) so the Hilt/Supabase graph isn't booted for DAO tests.
+ */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], application = Application::class)
 class DaoTest {
 
     private lateinit var db: AppDatabase
@@ -43,16 +47,16 @@ class DaoTest {
         syncState = SyncEnvelope.STATE_PENDING,
     )
 
-    private fun business(id: String, name: String = id) =
-        BusinessEntity(id, name, "local", "PKR", 1L, envelope())
+    private fun business(id: String, owner: String = "u1", name: String = id) =
+        BusinessEntity(id, name, owner, "PKR", 1L, envelope())
 
-    private fun book(id: String, businessId: String, deletedAt: Long? = null) =
-        BookEntity(id, businessId, "local", id, "PKR", 1L, envelope(deletedAt))
+    private fun book(id: String, businessId: String, owner: String = "u1", deletedAt: Long? = null) =
+        BookEntity(id, businessId, owner, id, "PKR", 1L, envelope(deletedAt))
 
     private fun entry(
         id: String, bookId: String, type: String, paisa: Long,
-        createdAt: Long = 1L, deletedAt: Long? = null,
-    ) = TransactionEntity(id, bookId, type, paisa, null, "", createdAt, "local", envelope(deletedAt))
+        createdBy: String = "u1", createdAt: Long = 1L, deletedAt: Long? = null,
+    ) = TransactionEntity(id, bookId, type, paisa, null, "", createdAt, createdBy, envelope(deletedAt))
 
     @Test
     fun `business book counts exclude deleted books`() = runBlocking {
@@ -63,8 +67,43 @@ class DaoTest {
         db.bookDao().upsert(book("bk3", "biz1", deletedAt = 9L))
         db.bookDao().upsert(book("bk4", "biz2"))
 
-        val rows = db.businessDao().observeWithBookCount().first()
+        val rows = db.businessDao().observeWithBookCount("u1").first()
         assertEquals(listOf("biz1" to 2, "biz2" to 1), rows.map { it.business.id to it.bookCount })
+    }
+
+    @Test
+    fun `businesses are isolated by owner`() = runBlocking {
+        db.businessDao().upsert(business("mine", owner = "u1"))
+        db.businessDao().upsert(business("theirs", owner = "u2"))
+        db.businessDao().upsert(business("guest_biz", owner = "guest"))
+
+        assertEquals(listOf("mine"), db.businessDao().observeWithBookCount("u1").first().map { it.business.id })
+        assertEquals(listOf("theirs"), db.businessDao().observeWithBookCount("u2").first().map { it.business.id })
+        assertEquals(listOf("guest_biz"), db.businessDao().observeWithBookCount("guest").first().map { it.business.id })
+    }
+
+    @Test
+    fun `claim moves guest rows to the uid and leaves others untouched`() = runBlocking {
+        db.businessDao().upsert(business("g_biz", owner = "guest"))
+        db.businessDao().upsert(business("other", owner = "u2"))
+        db.bookDao().upsert(book("g_book", "g_biz", owner = "guest"))
+        db.transactionDao().upsert(entry("g_tx", "g_book", "CASH_IN", 500, createdBy = "guest"))
+
+        val now = 42L
+        db.businessDao().claimOwner("guest", "u1", now)
+        db.bookDao().claimOwner("guest", "u1", now)
+        db.transactionDao().claimCreator("guest", "u1", now)
+
+        // Now visible under u1, gone from guest, u2 unaffected.
+        assertEquals(listOf("g_biz"), db.businessDao().observeWithBookCount("u1").first().map { it.business.id })
+        assertEquals(emptyList<String>(), db.businessDao().observeWithBookCount("guest").first().map { it.business.id })
+        assertEquals(listOf("other"), db.businessDao().observeWithBookCount("u2").first().map { it.business.id })
+
+        val claimedBook = db.bookDao().getById("g_book")!!
+        assertEquals("u1", claimedBook.ownerUid)
+        assertEquals(SyncEnvelope.STATE_PENDING, claimedBook.sync.syncState)
+        assertEquals(now, claimedBook.sync.updatedAt)
+        assertEquals("u1", db.transactionDao().getById("g_tx")!!.createdByUid)
     }
 
     @Test

@@ -16,12 +16,19 @@ import com.elegen.elegencashbook.domain.model.Business
 import com.elegen.elegencashbook.domain.model.BusinessOverview
 import com.elegen.elegencashbook.domain.model.EntryType
 import com.elegen.elegencashbook.domain.model.Transaction
+import com.elegen.elegencashbook.data.identity.IdentityManager
+import com.elegen.elegencashbook.data.local.db.AppDatabase
 import com.elegen.elegencashbook.domain.repository.BookRepository
 import com.elegen.elegencashbook.domain.repository.BusinessRepository
+import com.elegen.elegencashbook.domain.repository.LocalDataMaintenance
 import com.elegen.elegencashbook.domain.repository.SettingsRepository
 import com.elegen.elegencashbook.domain.repository.TransactionRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -33,9 +40,6 @@ import javax.inject.Singleton
  */
 
 private const val DEFAULT_CURRENCY = "PKR"
-
-/** Placeholder owner uid until auth (P3) provides a real one. */
-private const val LOCAL_UID = "local"
 
 private fun newEnvelope(deviceId: String, now: Long) = SyncEnvelope(
     version = 1,
@@ -53,21 +57,27 @@ private fun SyncEnvelope.bumped(deviceId: String, now: Long, deletedAt: Long? = 
     syncState = SyncEnvelope.STATE_PENDING,
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @Singleton
 class BusinessRepositoryImpl @Inject constructor(
     private val dao: BusinessDao,
     private val prefs: AppPreferences,
+    private val identity: IdentityManager,
 ) : BusinessRepository {
 
+    // Re-subscribes on every identity change (login/logout) so the visible set is always the
+    // active identity's — never another user's rows.
     override fun observeBusinesses(): Flow<List<BusinessOverview>> =
-        dao.observeWithBookCount().map { rows -> rows.map { it.toDomain() } }
+        identity.activeUid.flatMapLatest { uid ->
+            dao.observeWithBookCount(uid).map { rows -> rows.map { it.toDomain() } }
+        }
 
     override suspend fun create(name: String): Business {
         val now = System.currentTimeMillis()
         val entity = BusinessEntity(
             id = UUID.randomUUID().toString(),
             name = name,
-            ownerUid = LOCAL_UID,
+            ownerUid = identity.current(),
             currency = DEFAULT_CURRENCY,
             createdAt = now,
             sync = newEnvelope(prefs.deviceId(), now),
@@ -80,9 +90,12 @@ class BusinessRepositoryImpl @Inject constructor(
 @Singleton
 class BookRepositoryImpl @Inject constructor(
     private val dao: BookDao,
+    private val transactionDao: TransactionDao,
     private val prefs: AppPreferences,
+    private val identity: IdentityManager,
 ) : BookRepository {
 
+    // Scoped by businessId; access to the business is already the identity gate (BusinessRepository).
     override fun observeBooksWithBalance(businessId: String): Flow<List<BookWithBalance>> =
         dao.observeWithBalance(businessId).map { rows -> rows.map { it.toDomain() } }
 
@@ -91,7 +104,7 @@ class BookRepositoryImpl @Inject constructor(
         val entity = BookEntity(
             id = UUID.randomUUID().toString(),
             businessId = businessId,
-            ownerUid = LOCAL_UID,
+            ownerUid = identity.current(),
             name = name,
             currency = DEFAULT_CURRENCY,
             createdAt = now,
@@ -100,12 +113,61 @@ class BookRepositoryImpl @Inject constructor(
         dao.upsert(entity)
         return entity.toDomain()
     }
+
+    override suspend fun rename(bookId: String, name: String) {
+        val existing = dao.getById(bookId) ?: return
+        val now = System.currentTimeMillis()
+        dao.upsert(existing.copy(name = name, sync = existing.sync.bumped(prefs.deviceId(), now)))
+    }
+
+    override suspend fun softDelete(bookId: String) {
+        val existing = dao.getById(bookId) ?: return
+        val now = System.currentTimeMillis()
+        dao.upsert(existing.copy(sync = existing.sync.bumped(prefs.deviceId(), now, deletedAt = now)))
+    }
+
+    override suspend fun restore(bookId: String) {
+        val existing = dao.getById(bookId) ?: return
+        val now = System.currentTimeMillis()
+        dao.upsert(existing.copy(sync = existing.sync.bumped(prefs.deviceId(), now, deletedAt = null)))
+    }
+
+    override suspend fun move(bookId: String, targetBusinessId: String) {
+        val existing = dao.getById(bookId) ?: return
+        val now = System.currentTimeMillis()
+        dao.upsert(existing.copy(businessId = targetBusinessId, sync = existing.sync.bumped(prefs.deviceId(), now)))
+    }
+
+    override suspend fun duplicate(bookId: String): Book {
+        val existing = dao.getById(bookId) ?: error("Book not found")
+        val now = System.currentTimeMillis()
+        val copy = existing.copy(
+            id = UUID.randomUUID().toString(),
+            name = "${existing.name} (Copy)",
+            ownerUid = identity.current(),
+            createdAt = now,
+            sync = newEnvelope(prefs.deviceId(), now),
+        )
+        dao.upsert(copy)
+        transactionDao.getAllActiveByBook(bookId).forEach { entry ->
+            transactionDao.upsert(
+                entry.copy(
+                    id = UUID.randomUUID().toString(),
+                    bookId = copy.id,
+                    createdByUid = identity.current(),
+                    sync = newEnvelope(prefs.deviceId(), now),
+                )
+            )
+        }
+        return copy.toDomain()
+    }
 }
 
 @Singleton
 class TransactionRepositoryImpl @Inject constructor(
     private val dao: TransactionDao,
     private val prefs: AppPreferences,
+    private val identity: IdentityManager,
 ) : TransactionRepository {
 
     override fun observeEntries(bookId: String): Flow<List<Transaction>> =
@@ -127,7 +189,7 @@ class TransactionRepositoryImpl @Inject constructor(
             categoryId = null,
             description = description,
             createdAt = createdAt,
-            createdByUid = LOCAL_UID,
+            createdByUid = identity.current(),
             sync = newEnvelope(prefs.deviceId(), now),
         )
         dao.upsert(entity)
@@ -167,4 +229,18 @@ class SettingsRepositoryImpl @Inject constructor(
 ) : SettingsRepository {
     override val activeBusinessId: Flow<String?> = prefs.activeBusinessId
     override suspend fun setActiveBusinessId(id: String) = prefs.setActiveBusinessId(id)
+    override suspend fun clearActiveBusinessId() = prefs.clearActiveBusinessId()
+    override val guestModeChosen: Flow<Boolean> = prefs.guestModeChosen
+    override suspend fun setGuestModeChosen(chosen: Boolean) = prefs.setGuestModeChosen(chosen)
+}
+
+@Singleton
+class LocalDataMaintenanceImpl @Inject constructor(
+    private val db: AppDatabase,
+    private val prefs: AppPreferences,
+) : LocalDataMaintenance {
+    override suspend fun wipeAll() = withContext(Dispatchers.IO) {
+        db.clearAllTables()
+        prefs.clearAll()
+    }
 }

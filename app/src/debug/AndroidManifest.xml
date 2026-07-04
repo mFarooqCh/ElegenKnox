@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug-only: allow cleartext HTTP to the local Supabase dev stack (http://<LAN-IP>:54321).
+     Release builds keep the platform default (HTTPS only). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:usesCleartextTraffic="true" />
+</manifest>

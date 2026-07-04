@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
@@ -29,6 +31,26 @@ class AppPreferences @Inject constructor(
 
     suspend fun setActiveBusinessId(id: String) {
         context.dataStore.edit { it[keyActiveBusinessId] = id }
+    }
+
+    suspend fun clearActiveBusinessId() {
+        context.dataStore.edit { it.remove(keyActiveBusinessId) }
+    }
+
+    // In-memory only (process lifetime), not DataStore: "continue as guest" should only skip the
+    // login prompt for the current app session. Closing and reopening the app must prompt again.
+    private val _guestModeChosen = MutableStateFlow(false)
+    val guestModeChosen: Flow<Boolean> = _guestModeChosen.asStateFlow()
+
+    fun setGuestModeChosen(chosen: Boolean) {
+        _guestModeChosen.value = chosen
+    }
+
+    /** Fresh-install state (deviceId regenerates on next use). */
+    suspend fun clearAll() {
+        cachedDeviceId = null
+        _guestModeChosen.value = false
+        context.dataStore.edit { it.clear() }
     }
 
     private val deviceIdMutex = Mutex()

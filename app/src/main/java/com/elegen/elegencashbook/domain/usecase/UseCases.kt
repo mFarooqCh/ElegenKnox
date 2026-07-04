@@ -49,6 +49,29 @@ class ListBooks @Inject constructor(private val repo: BookRepository) {
         repo.observeBooksWithBalance(businessId)
 }
 
+class RenameBook @Inject constructor(private val repo: BookRepository) {
+    suspend operator fun invoke(bookId: String, name: String) {
+        require(name.isNotBlank()) { "Book name required" }
+        repo.rename(bookId, name.trim())
+    }
+}
+
+class DeleteBook @Inject constructor(private val repo: BookRepository) {
+    suspend operator fun invoke(bookId: String) = repo.softDelete(bookId)
+}
+
+class RestoreBook @Inject constructor(private val repo: BookRepository) {
+    suspend operator fun invoke(bookId: String) = repo.restore(bookId)
+}
+
+class DuplicateBook @Inject constructor(private val repo: BookRepository) {
+    suspend operator fun invoke(bookId: String): Book = repo.duplicate(bookId)
+}
+
+class MoveBook @Inject constructor(private val repo: BookRepository) {
+    suspend operator fun invoke(bookId: String, targetBusinessId: String) = repo.move(bookId, targetBusinessId)
+}
+
 class ObserveBookEntries @Inject constructor(private val repo: TransactionRepository) {
     operator fun invoke(bookId: String): Flow<List<Transaction>> = repo.observeEntries(bookId)
 }

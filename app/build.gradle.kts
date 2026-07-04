@@ -1,8 +1,18 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
 }
+
+// Supabase endpoint config: local.properties (gitignored) > env > empty (app runs guest-only).
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+fun cfg(key: String, env: String): String =
+    (localProps.getProperty(key) ?: System.getenv(env) ?: "").trim()
 
 android {
     namespace = "com.elegen.elegencashbook"
@@ -20,6 +30,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Anon key is public by design (RLS enforces access); service_role key must NEVER appear here (spec §9).
+        buildConfigField("String", "SUPABASE_URL", "\"${cfg("supabase.url", "SUPABASE_URL")}\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${cfg("supabase.anonKey", "SUPABASE_ANON_KEY")}\"")
     }
 
     buildFeatures {
@@ -68,6 +82,10 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.datastore.preferences)
+    // P3: auth + encrypted session storage (spec §2, §9)
+    implementation(libs.supabase.auth)
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.tink)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)

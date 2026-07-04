@@ -69,13 +69,11 @@
 - [x] Unit tests: 8 use-case/balance tests (fake repo, exact-paisa, overflow-throws, delete/restore) + 5 DAO tests (Robolectric 4.16.1 on JVM via vintage engine: counts/balances exclude tombstones, chronological order, zero-not-null empty balance). 48 total green.
 
 **Proof Gate P2**
-- [ ] Create business → book → 5 entries → **force-kill app** → reopen: everything intact, balances identical. **(user — device offline)**
-- [ ] Switch between two businesses; each shows only its own books. Active business survives restart. **(user)**
-- [ ] Delete entry (long-press) → Undo restore → balance correct at each step. **(user)**
+- [x] Create business → book → 5 entries → **force-kill app** → reopen: everything intact, balances identical. (user-verified 2026-07-04)
+- [x] Switch between two businesses; each shows only its own books. Active business survives restart. (user-verified)
+- [x] Delete entry (long-press) → Undo restore → balance correct at each step. (user-verified)
 - [x] Grep proof: no `Room`/`Dao` import outside `data/`; no repository import in any Activity; no state `mutableListOf` in UI.
-- [ ] **Regression:** P0–P1 proofs pass. **(user)**
-
-> Device note: wireless adb dropped — install/smoke pending reconnect (`adb pair`/USB), then `gradlew installDebug`.
+- [x] **Regression:** P0–P1 proofs pass. (user-verified)
 
 ---
 
@@ -84,20 +82,28 @@
 **Goal:** optional sign-in (email). Constitution §1: app fully usable without account; auth is required only for sync/sharing (later phases).
 
 **Checklist**
-- [ ] Supabase project up (self-host Docker Compose per spec §2, or free tier for dev).
-- [ ] `users` table + `CHECK`/`UNIQUE` constraints (spec §8.1); Supabase Auth email (magic link or email+password — pick one, magic link = least UI).
-- [ ] `core/auth`: `SessionManager` — login, signout, session persisted via Keystore+Tink+DataStore (spec §9). Phone field stored as unverified identifier (no SMS).
-- [ ] New layout: `activity_login` (or dialog) — matches existing design language.
-- [ ] Signout: clears session material + active-business cache; local Room data retained (spec §8.2); "sign out & remove data" wipes.
-- [ ] Guest mode explicit: skip login → everything local (P2 behavior unchanged).
-- [ ] Use cases: `SignIn`, `RegisterUser`, `SignOut`.
+- [x] Supabase local stack up (Docker via `npx supabase start`; CLI 2.109). Config in gitignored `local.properties` (`supabase.url` = host LAN IP, `supabase.anonKey`) → BuildConfig; empty config ⇒ app runs guest-only. Debug builds allow cleartext HTTP for the LAN dev server.
+- [x] `users` table migration (`supabase/migrations/20260704000001_users.sql`): CHECK email-or-phone, UNIQUE both, sync envelope, signup trigger copies display_name/phone from metadata, server-side updated_at/version trigger. **[DECIDED] email+password auth** (magic link needs deep-link plumbing, zero cost benefit); phone = optional unverified identifier at registration, E.164-normalized client-side.
+- [x] RLS verified via live curl matrix: own-row select only; cross-user isolated; anon denied; client writes denied (no grant + no policy); duplicate phone rejected (23505).
+- [x] Session security (spec §9): `core/security/TinkEncryptor` (AES256-GCM keyset wrapped by Android Keystore master key) + `EncryptedSessionStorage` implements supabase-kt `SessionManager` over its own DataStore file — JWT never on disk in plaintext. Corrupt session ⇒ silent sign-out, never a crash.
+- [x] New layout `activity_login` (matches indigo design language): sign-in/register toggle, name+phone on register, error line, "Continue without account".
+- [x] Signout (account dialog on top-bar person icon): "Sign out" keeps Room data, clears session + active-business; "Sign out & remove data" wipes Room + prefs (confirm dialog). Offline signout still clears local session.
+- [x] Guest mode explicit: login auto-prompts once on first launch only; guest choice remembered; account button reopens login anytime.
+- [x] Use cases: `SignIn`, `RegisterUser`, `SignOut`, `SignOutAndWipe`, `ObserveSession` + email/phone normalization (18 validation tests). supabase-kt 3.6.0 / ktor 3.4.3 / tink 1.22.0.
 
 **Proof Gate P3**
-- [ ] Register new account (email arrives / password works). Login → app shows same local data.
-- [ ] Signout → local books still visible (guest). "Sign out & remove data" → clean slate.
-- [ ] Airplane mode: full app usable (create/edit/delete) with no account and with a logged-in account.
-- [ ] Token stored encrypted (inspect: no plaintext token in any prefs/DataStore file).
-- [ ] **Regression:** P0–P2 proofs pass.
+- [x] Server side: register → row in `public.users` with phone+name; login token issued; RLS matrix green (curl-verified 2026-07-04).
+- [ ] On device: register + login → app shows same local data. **(user + device reconnect)**
+- [ ] Signout → local books still visible (guest). "Sign out & remove data" → clean slate. **(user)**
+- [ ] Airplane mode: full app usable with no account and with a logged-in account. **(user)**
+- [ ] Token stored encrypted — `adb shell run-as com.elegen.elegencashbook` inspect `files/datastore/elegen_session.preferences_pb`: no `eyJ` JWT prefix. (I run this when device attached.)
+- [ ] **Regression:** P0–P2 proofs pass. **(user)**
+
+> Dev-loop note: switched from local Docker stack to a **hosted Supabase project** (HTTPS, free tier) — device no longer needs same-Wi-Fi. `local.properties` holds hosted `supabase.url` + publishable key (gitignored). Schema applied via dashboard SQL Editor (auto-mode blocks DDL to a live DB — by design). Two hosted-project settings required: (1) run `supabase/migrations/20260704000001_users.sql` in SQL Editor; (2) Authentication → Sign In / Providers → Email → **disable "Confirm email"** so register auto-logs-in (hosted defaults it ON). Register must use a real email domain — hosted GoTrue rejects addresses whose domain has no MX record.
+>
+> P3 bug-fix pass (2026-07-04): stale APK lacked config (`serverConfigured=false` disabled sign-in/register buttons and suppressed the first-launch prompt) — fixed by rebuild. Added: register returns auto-login vs confirm-email state (shows "check your email" + switches to sign-in when confirmation is on); "email not confirmed" sign-in mapped to a clear message; account view is now a bottom sheet opened from the **Settings** bottom-nav tab (and top-bar person icon) — logged in shows email/phone + Log out + Log out & remove data; guest shows Sign in.
+>
+> **P3 identity-scoping (local data isolation) — 2026-07-04:** fixed a data-leak where all local rows shared one global bucket (`ownerUid="local"`, no per-user filter) so any account on the device saw every other's books. Now: `IdentityManager` (`data/identity`) tracks the active identity (`guest` sentinel vs real uid), stamps writes, and drives `BusinessRepository.observeBusinesses` via `activeUid.flatMapLatest` so the visible set switches on login/logout. On login it **claims** guest rows → uid (guest-created data becomes the account's); on logout the active id flips to guest, hiding the user's rows without deleting (retain-but-hidden; explicit "remove data" still wipes). One-time upgrade reassigns legacy `local`→`guest` at startup so pre-existing data survives. Books/transactions are scoped by parent (business/book) — the business list is the isolation gate, keeping the model P7-collaboration-ready. Supabase client init hardened to degrade to guest-only on failure (never crashes launch, now that `IdentityManager` forces client creation at app start). Verified: 68 unit tests green (incl. owner-isolation + claim DAO tests); installs + launches clean on device (Xiaomi/MIUI), no crash, Supabase init OK on-device (the earlier Robolectric `SettingsSessionManager` error was JVM-test-only). Full guest→login→logout on-device proof pending the hosted `users` SQL + email-confirmation toggle + a real sign-in.
 
 ---
 
