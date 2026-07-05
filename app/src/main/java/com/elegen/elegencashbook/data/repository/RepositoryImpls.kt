@@ -197,6 +197,9 @@ class TransactionRepositoryImpl @Inject constructor(
     override fun observeEntries(bookId: String): Flow<List<Transaction>> =
         dao.observeActiveByBook(bookId).map { rows -> rows.map { it.toDomain() } }
 
+    override fun observeById(id: String): Flow<Transaction?> =
+        dao.observeById(id).map { it?.toDomain() }
+
     override suspend fun add(
         bookId: String,
         type: EntryType,
@@ -250,6 +253,26 @@ class TransactionRepositoryImpl @Inject constructor(
     override suspend fun restore(id: String) {
         val existing = dao.getById(id) ?: return
         bump(existing, SyncQueueEntity.OP_UPDATE, deletedAt = null)
+    }
+
+    override suspend fun move(id: String, targetBookId: String) {
+        val existing = dao.getById(id) ?: return
+        bump(existing, SyncQueueEntity.OP_UPDATE) { copy(bookId = targetBookId) }
+    }
+
+    override suspend fun copyTo(id: String, targetBookId: String): Transaction {
+        val existing = dao.getById(id) ?: error("Entry not found")
+        val now = System.currentTimeMillis()
+        val copy = existing.copy(
+            id = UUID.randomUUID().toString(),
+            bookId = targetBookId,
+            createdByUid = identity.current(),
+            sync = newEnvelope(prefs.deviceId(), now),
+        )
+        return outbox.write(SyncQueueEntity.TYPE_TRANSACTION, copy.id, copy.sync.version, SyncQueueEntity.OP_CREATE) {
+            dao.upsert(copy)
+            copy.toDomain()
+        }
     }
 }
 

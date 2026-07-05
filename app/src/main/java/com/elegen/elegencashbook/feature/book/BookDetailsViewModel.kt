@@ -39,7 +39,7 @@ data class EntryItem(
     val dateText: String,
 )
 
-data class BusinessOption(val id: String, val name: String)
+data class BusinessOption(val id: String, val name: String, val bookCount: Int)
 
 data class BookDetailsUiState(
     /** Newest first for display. */
@@ -47,6 +47,7 @@ data class BookDetailsUiState(
     val totalInText: String = "0",
     val totalOutText: String = "0",
     val netText: String = "0",
+    val netIsNegative: Boolean = false,
     val entryCount: Int = 0,
     /** Move-book targets: businesses other than the one this book currently lives in. */
     val otherBusinesses: List<BusinessOption> = emptyList(),
@@ -142,11 +143,12 @@ class BookDetailsViewModel @Inject constructor(
             entries = itemsChronological.asReversed(),
             totalInText = summary.totalIn.format(),
             totalOutText = summary.totalOut.format(),
-            netText = summary.net.format(),
+            netText = summary.net.abs.format(),
+            netIsNegative = summary.net.isNegative,
             entryCount = entries.size,
             otherBusinesses = businesses
                 .filterNot { it.business.id == businessId }
-                .map { BusinessOption(it.business.id, it.business.name) },
+                .map { BusinessOption(it.business.id, it.business.name, it.bookCount) },
         )
     }
 }

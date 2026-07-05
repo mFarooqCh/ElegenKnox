@@ -115,5 +115,34 @@ class MoneyTest {
                 assertEquals(s, Money.parse(s)!!.format())
             }
         }
+
+        @ParameterizedTest(name = "{0} paisa -> \"{1}\"")
+        @CsvSource(
+            "9999900,      99999",     // just under 1 lakh -> plain format, no suffix
+            "10000000,     1.00L",     // exactly 1 lakh
+            "494500000,    49.45L",
+            "-494500000,   -49.45L",
+            "990000000,    99.00L",    // just under 1 crore -> still L, not Cr
+            "1000000000,   1.00Cr",    // exactly 1 crore
+            "49450000000,  49.45Cr",
+            "-49450000000, -49.45Cr",
+            "837000,       8370",      // sub-lakh unaffected
+        )
+        fun `formatCompact uses lakh-crore short form above 1 lakh`(paisa: Long, expected: String) {
+            assertEquals(expected, Money(paisa).formatCompact())
+        }
+
+        @ParameterizedTest(name = "{0} paisa -> \"{1}\"")
+        @CsvSource(
+            "12300,       123",         // 3 digits or fewer -> no grouping
+            "123400,      '1,234'",
+            "-123400,     '1,234'",     // sign dropped, magnitude only
+            "123450,      '1,234.50'",  // fraction preserved after the grouped integer part
+            "494500000,   '49,45,000'", // Indian grouping (2-digit groups after the first 3)
+            "0,           0",
+        )
+        fun `formatGrouped applies Indian digit grouping to the magnitude`(paisa: Long, expected: String) {
+            assertEquals(expected, Money(paisa).formatGrouped())
+        }
     }
 }

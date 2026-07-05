@@ -35,6 +35,9 @@
         android:textColor="#111827"
         android:textSize="16sp"
         android:textStyle="bold"
+        android:layout_marginEnd="10dp"
+        android:maxLines="1"
+        android:ellipsize="end"
         app:layout_constraintEnd_toStartOf="@id/book_balance"
         app:layout_constraintStart_toEndOf="@id/book_icon_container"
         app:layout_constraintTop_toTopOf="@id/book_icon_container" />
@@ -68,10 +71,10 @@
         android:layout_height="40dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="More options"
-        android:padding="9dp"
+        android:padding="4dp"
         android:src="@drawable/ic_more_vert"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:tint="#4F46E5" />
+        app:tint="#9CA3AF" />
 </androidx.constraintlayout.widget.ConstraintLayout>

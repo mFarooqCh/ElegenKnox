@@ -39,12 +39,18 @@ interface BookRepository {
 interface TransactionRepository {
     /** Non-deleted entries of a book, chronological (oldest first, stable tiebreak). */
     fun observeEntries(bookId: String): Flow<List<Transaction>>
+    /** Single entry for the Entry Details screen; emits null once soft-deleted. */
+    fun observeById(id: String): Flow<Transaction?>
     suspend fun add(bookId: String, type: EntryType, amount: Money, description: String, createdAt: Long): Transaction
     suspend fun update(transaction: Transaction)
     /** Soft delete: sets tombstone, entry disappears from observe flows (spec §6.6). */
     suspend fun softDelete(id: String)
     /** Clears tombstone; entry reappears. */
     suspend fun restore(id: String)
+    /** Moves the entry to another book (original book loses it). */
+    suspend fun move(id: String, targetBookId: String)
+    /** Copies the entry into another book; the original stays where it is. */
+    suspend fun copyTo(id: String, targetBookId: String): Transaction
 }
 
 interface SettingsRepository {

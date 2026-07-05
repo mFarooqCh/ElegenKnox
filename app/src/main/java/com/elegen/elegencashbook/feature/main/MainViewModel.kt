@@ -49,6 +49,8 @@ data class BookItem(
     val name: String,
     val metaText: String,
     val balanceText: String,
+    val balanceIsNegative: Boolean,
+    val entryCount: Int,
 )
 
 data class AccountUi(
@@ -58,6 +60,16 @@ data class AccountUi(
     val email: String? = null,
     val phone: String? = null,
 )
+
+fun SessionState.toAccountUi(): AccountUi = when (this) {
+    is SessionState.LoggedIn -> AccountUi(
+        loggedIn = true,
+        label = user.displayName ?: user.email ?: "Account",
+        email = user.email,
+        phone = user.phone,
+    )
+    else -> AccountUi(loggedIn = false, label = "Guest")
+}
 
 data class MainUiState(
     val businesses: List<BusinessItem> = emptyList(),
@@ -150,17 +162,8 @@ class MainViewModel @Inject constructor(
     )
 
     private fun buildState(inputs: Inputs, books: List<BookWithBalance>): MainUiState {
-        val account = when (val s = inputs.session) {
-            is SessionState.LoggedIn -> AccountUi(
-                loggedIn = true,
-                label = s.user.displayName ?: s.user.email ?: "Account",
-                email = s.user.email,
-                phone = s.user.phone,
-            )
-            else -> AccountUi(loggedIn = false, label = "Guest")
-        }
         return buildListState(inputs.businesses, inputs.active, books).copy(
-            account = account,
+            account = inputs.session.toAccountUi(),
             promptLogin = serverConfigured &&
                 inputs.session is SessionState.Guest &&
                 !inputs.guestChosen,
@@ -189,7 +192,9 @@ class MainViewModel @Inject constructor(
                     id = it.book.id,
                     name = it.book.name,
                     metaText = bookMeta(it),
-                    balanceText = "Rs ${it.net.format()}",
+                    balanceText = "Rs ${it.net.abs.formatCompact()}",
+                    balanceIsNegative = it.net.isNegative,
+                    entryCount = it.entryCount,
                 )
             },
         )

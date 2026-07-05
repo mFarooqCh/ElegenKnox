@@ -43,6 +43,27 @@
         <activity
             android:name=".BookDetailsActivity"
             android:exported="false" />
+        <activity
+            android:name=".EntryDetailsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".BusinessSettingsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".AppSettingsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ProfileActivity"
+            android:exported="false" />
+        <activity
+            android:name=".GenerateReportActivity"
+            android:exported="false" />
+        <activity
+            android:name=".HelpActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

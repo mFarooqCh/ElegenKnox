@@ -49,6 +49,20 @@ private class FakeTransactionRepository : TransactionRepository {
     override suspend fun restore(id: String) {
         rows.value = rows.value.map { (tx, del) -> if (tx.id == id) tx to null else tx to del }
     }
+
+    override fun observeById(id: String): Flow<Transaction?> =
+        rows.map { list -> list.firstOrNull { (tx, del) -> tx.id == id && del == null }?.first }
+
+    override suspend fun move(id: String, targetBookId: String) {
+        rows.value = rows.value.map { (tx, del) -> if (tx.id == id) tx.copy(bookId = targetBookId) to del else tx to del }
+    }
+
+    override suspend fun copyTo(id: String, targetBookId: String): Transaction {
+        val (existing, _) = rows.value.first { (tx, _) -> tx.id == id }
+        val copy = existing.copy(id = UUID.randomUUID().toString(), bookId = targetBookId)
+        rows.value = rows.value + (copy to null)
+        return copy
+    }
 }
 
 class UseCasesTest {

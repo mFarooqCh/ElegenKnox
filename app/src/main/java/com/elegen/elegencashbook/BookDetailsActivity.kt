@@ -1,8 +1,7 @@
 package com.elegen.elegencashbook
 
-import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import android.content.Context
+import android.content.Intent
 import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -13,7 +12,6 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -24,20 +22,20 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.elegen.elegencashbook.core.money.Money
 import com.elegen.elegencashbook.core.ui.setPrimaryEnabled
 import com.elegen.elegencashbook.feature.book.BookDetailsUiEvent
 import com.elegen.elegencashbook.feature.book.BookDetailsUiState
 import com.elegen.elegencashbook.feature.book.BookDetailsViewModel
 import com.elegen.elegencashbook.feature.book.EntryItem
+import com.elegen.elegencashbook.ui.DeleteConfirmDialog
+import com.elegen.elegencashbook.ui.EntryFormDialog
+import com.elegen.elegencashbook.ui.PickTargetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import dagger.hilt.android.AndroidEntryPoint
-import java.text.SimpleDateFormat
-import java.util.*
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -87,7 +85,7 @@ class BookDetailsActivity : AppCompatActivity() {
         entryListContainer.adapter = entryAdapter
 
         findViewById<TextView>(R.id.btn_view_reports).setOnClickListener {
-            Toast.makeText(this, "View Reports", Toast.LENGTH_SHORT).show()
+            startActivity(Intent(this, GenerateReportActivity::class.java))
         }
 
         findViewById<ImageButton>(R.id.toolbar_more).setOnClickListener { showBookMenu(it) }
@@ -123,114 +121,32 @@ class BookDetailsActivity : AppCompatActivity() {
     // Bottom-sheet dialog
     // ─────────────────────────────────────────────────────────────────────
     private fun showEntryDialog(isCashIn: Boolean) {
-        val dialog = BottomSheetDialog(this)
-        val view   = LayoutInflater.from(this).inflate(R.layout.dialog_add_entry, null)
-        dialog.setContentView(view)
-
-        val accentColor   = ContextCompat.getColor(this, if (isCashIn) R.color.success_green else R.color.danger_red)
-        val accentBgColor = ContextCompat.getColor(this, if (isCashIn) R.color.success_green_bg else R.color.danger_red_bg)
-
-        // Title
-        view.findViewById<TextView>(R.id.dialog_title).apply {
-            text = if (isCashIn) "Add Cash In Entry" else "Add Cash Out Entry"
-            setTextColor(accentColor)
-        }
-
-        // Header icon circle
-        view.findViewById<FrameLayout>(R.id.dialog_icon_bg).apply {
-            backgroundTintList = android.content.res.ColorStateList.valueOf(accentBgColor)
-        }
-        view.findViewById<ImageView>(R.id.dialog_icon).apply {
-            setImageResource(if (isCashIn) R.drawable.ic_plus else R.drawable.ic_minus)
-            imageTintList = android.content.res.ColorStateList.valueOf(accentColor)
-        }
-
-        // Amount box stroke colour + text colour
-        view.findViewById<TextInputLayout>(R.id.layout_amount).apply {
-            boxStrokeColor = accentColor
-            hintTextColor = android.content.res.ColorStateList.valueOf(accentColor)
-        }
-        view.findViewById<TextInputEditText>(R.id.et_amount).setTextColor(accentColor)
-
-        // Save button colour
-        view.findViewById<MaterialButton>(R.id.btn_save).apply {
-            backgroundTintList = android.content.res.ColorStateList.valueOf(accentColor)
-        }
-
-        // Date / time
-        val cal     = Calendar.getInstance()
-        val dateFmt = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-        val timeFmt = SimpleDateFormat("hh:mm a",   Locale.getDefault())
-        val tvDate  = view.findViewById<TextView>(R.id.tv_selected_date)
-        val tvTime  = view.findViewById<TextView>(R.id.tv_selected_time)
-        tvDate.text = dateFmt.format(cal.time)
-        tvTime.text = timeFmt.format(cal.time)
-
-        view.findViewById<LinearLayout>(R.id.btn_pick_date).setOnClickListener {
-            DatePickerDialog(this, { _, y, m, d ->
-                cal.set(y, m, d); tvDate.text = dateFmt.format(cal.time)
-            }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
-        }
-        view.findViewById<LinearLayout>(R.id.btn_pick_time).setOnClickListener {
-            TimePickerDialog(this, { _, h, min ->
-                cal.set(Calendar.HOUR_OF_DAY, h); cal.set(Calendar.MINUTE, min)
-                tvTime.text = timeFmt.format(cal.time)
-            }, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), false).show()
-        }
-
-        view.findViewById<ImageButton>(R.id.dialog_back_btn).setOnClickListener { dialog.dismiss() }
-
-        val etAmount = view.findViewById<TextInputEditText>(R.id.et_amount)
-        val etRemark = view.findViewById<TextInputEditText>(R.id.et_remark)
-        val layoutAmount = view.findViewById<TextInputLayout>(R.id.layout_amount)
-
-        // Field validation only; all persistence goes through the ViewModel.
-        fun collectAndSend(): Boolean {
-            val amountStr = etAmount.text?.toString()?.trim() ?: ""
-            if (amountStr.isEmpty()) { layoutAmount.error = "Enter amount"; return false }
-            val amount = Money.parse(amountStr) ?: run { layoutAmount.error = "Invalid amount"; return false }
-            if (!amount.isPositive) { layoutAmount.error = "Amount must be greater than 0"; return false }
-            layoutAmount.error = null
+        EntryFormDialog.show(context = this, isCashIn = isCashIn, editing = false) { amount, description, entryAt, reopen ->
             viewModel.onEvent(
                 BookDetailsUiEvent.SaveEntry(
                     amount = amount,
-                    description = etRemark.text?.toString()?.trim() ?: "",
+                    description = description,
                     isCashIn = isCashIn,
-                    entryAt = cal.timeInMillis,
+                    entryAt = entryAt,
                 )
             )
-            return true
+            if (reopen) showEntryDialog(isCashIn)
         }
-
-        view.findViewById<MaterialButton>(R.id.btn_save).setOnClickListener {
-            if (collectAndSend()) dialog.dismiss()
-        }
-
-        view.findViewById<MaterialButton>(R.id.btn_save_add_new).setOnClickListener {
-            if (collectAndSend()) {
-                dialog.dismiss()
-                showEntryDialog(isCashIn)   // reopen fresh
-            }
-        }
-
-        dialog.show()
-        etAmount.requestFocus()
     }
 
     private fun confirmDelete(entry: EntryItem) {
-        AlertDialog.Builder(this)
-            .setTitle("Delete entry?")
-            .setMessage("You can undo right after deleting.")
-            .setPositiveButton("Delete") { _, _ ->
-                viewModel.onEvent(BookDetailsUiEvent.DeleteEntry(entry.id))
-                Snackbar.make(entryListContainer, "Entry deleted", Snackbar.LENGTH_LONG)
-                    .setAction("Undo") {
-                        viewModel.onEvent(BookDetailsUiEvent.RestoreEntry(entry.id))
-                    }
-                    .show()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        DeleteConfirmDialog.show(
+            context = this,
+            title = "Delete this entry?",
+            subtitle = "You can undo right after deleting.",
+        ) {
+            viewModel.onEvent(BookDetailsUiEvent.DeleteEntry(entry.id))
+            Snackbar.make(entryListContainer, "Entry deleted", Snackbar.LENGTH_LONG)
+                .setAction("Undo") {
+                    viewModel.onEvent(BookDetailsUiEvent.RestoreEntry(entry.id))
+                }
+                .show()
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -314,16 +230,17 @@ class BookDetailsActivity : AppCompatActivity() {
     }
 
     private fun confirmDeleteBook() {
-        AlertDialog.Builder(this)
-            .setTitle("Delete \"${bookName()}\"?")
-            .setMessage("This removes the book and its entries.")
-            .setPositiveButton("Delete") { _, _ ->
-                viewModel.onEvent(BookDetailsUiEvent.DeleteBook)
-                Toast.makeText(this, "Book deleted", Toast.LENGTH_SHORT).show()
-                finish()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        DeleteConfirmDialog.show(
+            context = this,
+            title = "Delete this book?",
+            subtitle = "All entries inside will be permanently deleted. This can't be undone.",
+            stat1 = DeleteConfirmDialog.Stat("1", "Book"),
+            stat2 = DeleteConfirmDialog.Stat("${uiState.entryCount}", "Entries"),
+        ) {
+            viewModel.onEvent(BookDetailsUiEvent.DeleteBook)
+            Toast.makeText(this, "Book deleted", Toast.LENGTH_SHORT).show()
+            finish()
+        }
     }
 
     private fun promptMoveBook() {
@@ -332,15 +249,16 @@ class BookDetailsActivity : AppCompatActivity() {
             Toast.makeText(this, "Create another business first to move this book into it", Toast.LENGTH_SHORT).show()
             return
         }
-        val names = targets.map { it.name }.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle("Move \"${bookName()}\" to")
-            .setItems(names) { _, index ->
-                viewModel.onEvent(BookDetailsUiEvent.MoveBook(targets[index].id))
-                Toast.makeText(this, "Moved to ${targets[index].name}", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        PickTargetDialog.show(
+            context = this,
+            iconRes = R.drawable.ic_move,
+            headerTitle = "Move \"${bookName()}\" to",
+            headerSubtitle = "Book leaves its current business",
+            items = targets.map { PickTargetDialog.Item(it.id, it.name, "${it.bookCount} books") },
+        ) { picked ->
+            viewModel.onEvent(BookDetailsUiEvent.MoveBook(picked.id))
+            Toast.makeText(this, "Moved to ${picked.title}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -348,6 +266,9 @@ class BookDetailsActivity : AppCompatActivity() {
         uiState = state
         val count = state.entryCount
         tvNetBalance.text    = "Rs ${state.netText}"
+        tvNetBalance.setTextColor(
+            ContextCompat.getColor(this, if (state.netIsNegative) R.color.danger_red else R.color.text_dark)
+        )
         tvEntriesInBook.text = "$count ${if (count == 1) "entry" else "entries"} this book"
         tvTotalIn.text       = "Rs ${state.totalInText}"
         tvTotalOut.text      = "Rs ${state.totalOutText}"
@@ -431,6 +352,14 @@ class BookDetailsActivity : AppCompatActivity() {
                 amount.setTextColor(accentColor)
                 balance.text = "Bal Rs ${entry.runningBalanceText}"
 
+                itemView.setOnClickListener {
+                    startActivity(
+                        Intent(itemView.context, EntryDetailsActivity::class.java).apply {
+                            putExtra("entry_id", entry.id)
+                            putExtra("business_id", intent.getStringExtra("business_id"))
+                        }
+                    )
+                }
                 itemView.setOnLongClickListener { confirmDelete(entry); true }
             }
         }

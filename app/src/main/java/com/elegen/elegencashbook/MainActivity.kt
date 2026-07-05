@@ -14,7 +14,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -32,6 +31,8 @@ import com.elegen.elegencashbook.feature.main.BusinessItem
 import com.elegen.elegencashbook.feature.main.MainUiEvent
 import com.elegen.elegencashbook.feature.main.MainUiState
 import com.elegen.elegencashbook.feature.main.MainViewModel
+import com.elegen.elegencashbook.ui.DeleteConfirmDialog
+import com.elegen.elegencashbook.ui.PickTargetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.chip.Chip
@@ -93,8 +94,8 @@ class MainActivity : AppCompatActivity() {
         findViewById<com.google.android.material.bottomnavigation.BottomNavigationView>(R.id.bottom_navigation)
             .setOnItemSelectedListener { item ->
                 when (item.itemId) {
-                    R.id.nav_settings -> { showAccountSheet(); false } // don't keep Settings selected
-                    R.id.nav_help -> { Toast.makeText(this, "Help coming soon", Toast.LENGTH_SHORT).show(); false }
+                    R.id.nav_settings -> { startActivity(Intent(this, SettingsActivity::class.java)); false } // don't keep Settings selected
+                    R.id.nav_help -> { startActivity(Intent(this, HelpActivity::class.java)); false }
                     else -> true
                 }
             }
@@ -178,58 +179,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showAccountSheet() {
-        val dialog = BottomSheetDialog(this)
-        val view = layoutInflater.inflate(R.layout.bottom_sheet_account, null)
-        val account = uiState.account
-
-        val identity = view.findViewById<View>(R.id.account_identity)
-        val guestHint = view.findViewById<TextView>(R.id.account_guest_hint)
-        val btnLogin = view.findViewById<MaterialButton>(R.id.btn_account_login)
-        val btnLogout = view.findViewById<MaterialButton>(R.id.btn_account_logout)
-        val btnLogoutWipe = view.findViewById<MaterialButton>(R.id.btn_account_logout_wipe)
-
-        if (account.loggedIn) {
-            identity.visibility = View.VISIBLE
-            btnLogout.visibility = View.VISIBLE
-            btnLogoutWipe.visibility = View.VISIBLE
-            view.findViewById<TextView>(R.id.account_email).text = account.email ?: account.label
-            view.findViewById<TextView>(R.id.account_phone).text = account.phone ?: "No phone added"
-
-            btnLogout.setOnClickListener {
-                viewModel.onEvent(MainUiEvent.SignOutKeepData)
-                dialog.dismiss()
-                startActivity(Intent(this, LoginActivity::class.java))
-            }
-            btnLogoutWipe.setOnClickListener {
-                dialog.dismiss()
-                confirmWipe()
-            }
-        } else {
-            guestHint.visibility = View.VISIBLE
-            btnLogin.visibility = View.VISIBLE
-            btnLogin.setOnClickListener {
-                dialog.dismiss()
-                startActivity(Intent(this, LoginActivity::class.java))
-            }
-        }
-
-        view.findViewById<ImageButton>(R.id.close_account_sheet).setOnClickListener { dialog.dismiss() }
-        dialog.setContentView(view)
-        dialog.show()
-    }
-
-    private fun confirmWipe() {
-        AlertDialog.Builder(this)
-            .setTitle("Remove all local data?")
-            .setMessage("This signs you out and deletes every business, book and entry stored on this device. This cannot be undone here.")
-            .setPositiveButton("Delete everything") { _, _ ->
-                viewModel.onEvent(MainUiEvent.SignOutWipeData)
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
     private fun showBookDetails(book: BookItem) {
         val intent = Intent(this, BookDetailsActivity::class.java).apply {
             putExtra("book_id", book.id)
@@ -250,10 +199,16 @@ class MainActivity : AppCompatActivity() {
         businessList.layoutManager = LinearLayoutManager(this)
         addBusinessButton.setPrimaryEnabled(true)
 
-        val adapter = BusinessAdapter { business ->
-            viewModel.onEvent(MainUiEvent.SelectBusiness(business.id))
-            dialog.dismiss()
-        }
+        val adapter = BusinessAdapter(
+            onSelected = { business ->
+                viewModel.onEvent(MainUiEvent.SelectBusiness(business.id))
+                dialog.dismiss()
+            },
+            onSettings = { business ->
+                dialog.dismiss()
+                startActivity(Intent(this, BusinessSettingsActivity::class.java))
+            },
+        )
         adapter.submit(uiState.businesses)
         businessList.adapter = adapter
         businessSheetAdapter = adapter
@@ -337,7 +292,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private inner class BusinessAdapter(
-        private val onSelected: (BusinessItem) -> Unit
+        private val onSelected: (BusinessItem) -> Unit,
+        private val onSettings: (BusinessItem) -> Unit,
     ) : RecyclerView.Adapter<BusinessAdapter.BusinessViewHolder>() {
 
         private val items = mutableListOf<BusinessItem>()
@@ -361,9 +317,11 @@ class MainActivity : AppCompatActivity() {
             if (business.isActive) {
                 holder.selected.setImageResource(R.drawable.ic_check_circle)
                 holder.selected.setColorFilter(ContextCompat.getColor(this@MainActivity, R.color.success_green))
+                holder.itemView.setBackgroundResource(R.drawable.bg_target_row_selected)
             } else {
                 holder.selected.setImageResource(R.drawable.ic_radio_unchecked)
                 holder.selected.setColorFilter(ContextCompat.getColor(this@MainActivity, R.color.unselected_gray))
+                holder.itemView.setBackgroundResource(R.drawable.bg_target_row_unselected)
             }
         }
 
@@ -380,6 +338,12 @@ class MainActivity : AppCompatActivity() {
                     val position = adapterPosition
                     if (position != RecyclerView.NO_POSITION) {
                         onSelected(items[position])
+                    }
+                }
+                view.findViewById<ImageButton>(R.id.business_settings_gear).setOnClickListener {
+                    val position = adapterPosition
+                    if (position != RecyclerView.NO_POSITION) {
+                        onSettings(items[position])
                     }
                 }
             }
@@ -418,17 +382,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun confirmDeleteBook(book: BookItem) {
-        AlertDialog.Builder(this)
-            .setTitle("Delete \"${book.name}\"?")
-            .setMessage("You can undo right after deleting.")
-            .setPositiveButton("Delete") { _, _ ->
-                viewModel.onEvent(MainUiEvent.DeleteBook(book.id))
-                Snackbar.make(booksRecyclerView, "Book deleted", Snackbar.LENGTH_LONG)
-                    .setAction("Undo") { viewModel.onEvent(MainUiEvent.RestoreBook(book.id)) }
-                    .show()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        DeleteConfirmDialog.show(
+            context = this,
+            title = "Delete this book?",
+            subtitle = "All entries inside will be permanently deleted. This can't be undone.",
+            stat1 = DeleteConfirmDialog.Stat("1", "Book"),
+            stat2 = DeleteConfirmDialog.Stat("${book.entryCount}", "Entries"),
+        ) {
+            viewModel.onEvent(MainUiEvent.DeleteBook(book.id))
+            Snackbar.make(booksRecyclerView, "Book deleted", Snackbar.LENGTH_LONG)
+                .setAction("Undo") { viewModel.onEvent(MainUiEvent.RestoreBook(book.id)) }
+                .show()
+        }
     }
 
     private fun promptMoveBook(book: BookItem) {
@@ -437,15 +402,16 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Create another business first to move books into it", Toast.LENGTH_SHORT).show()
             return
         }
-        val names = targets.map { it.name }.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle("Move \"${book.name}\" to")
-            .setItems(names) { _, index ->
-                viewModel.onEvent(MainUiEvent.MoveBook(book.id, targets[index].id))
-                Toast.makeText(this, "Moved to ${targets[index].name}", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        PickTargetDialog.show(
+            context = this,
+            iconRes = R.drawable.ic_move,
+            headerTitle = "Move \"${book.name}\" to",
+            headerSubtitle = "Book leaves its current business",
+            items = targets.map { PickTargetDialog.Item(it.id, it.name, "${it.bookCount} books") },
+        ) { picked ->
+            viewModel.onEvent(MainUiEvent.MoveBook(book.id, picked.id))
+            Toast.makeText(this, "Moved to ${picked.title}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private inner class BookAdapter : RecyclerView.Adapter<BookAdapter.BookViewHolder>() {
@@ -468,6 +434,12 @@ class MainActivity : AppCompatActivity() {
             holder.name.text = book.name
             holder.meta.text = book.metaText
             holder.balance.text = book.balanceText
+            holder.balance.setTextColor(
+                ContextCompat.getColor(
+                    this@MainActivity,
+                    if (book.balanceIsNegative) R.color.danger_red else R.color.success_green
+                )
+            )
             holder.itemView.setOnClickListener { showBookDetails(book) }
             holder.menu.setOnClickListener { showBookMenu(it, book) }
         }

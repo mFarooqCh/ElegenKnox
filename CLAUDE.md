@@ -85,3 +85,5 @@ P0–P4 done. **P5 (pull sync + conflicts) code done, on-device proof gate not y
 - Constitution compliance check required in every plan/spec/task list. Deviations need approval + documentation.
 - Regression matrix re-run at every phase gate (see implementation_plan.md §Regression matrix).
 - P5 not "done" until proof gate passes on real devices: device A add → appears on B, concurrent edit → same LWW winner both sides, delete propagates, uninstall/reinstall/login → full restore — plus P0–P4 regression still green.
+
+When build needed just tell me, don't ever try to install it yourself unless i asked it explicitly.

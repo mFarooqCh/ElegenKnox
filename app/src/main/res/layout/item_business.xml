@@ -7,7 +7,7 @@
     android:backgroundTintMode="src_over"
     android:layout_marginBottom="10dp"
     android:padding="12dp"
-    android:background="@drawable/bg_book_item">
+    android:background="@drawable/bg_target_row_unselected">
 
     <FrameLayout
         android:id="@+id/business_icon_container"
@@ -33,7 +33,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
         android:orientation="vertical"
-        app:layout_constraintEnd_toStartOf="@id/selected_indicator"
+        app:layout_constraintEnd_toStartOf="@id/business_settings_gear"
         app:layout_constraintStart_toEndOf="@id/business_icon_container"
         app:layout_constraintTop_toTopOf="@id/business_icon_container">
 
@@ -63,6 +63,20 @@
             android:textColor="#6B7280"
             android:textSize="13sp" />
     </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/business_settings_gear"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginEnd="8dp"
+        android:background="@drawable/bg_icon_square"
+        android:contentDescription="Business settings"
+        android:padding="8dp"
+        android:src="@drawable/ic_nav_settings"
+        app:layout_constraintBottom_toBottomOf="@id/business_icon_container"
+        app:layout_constraintEnd_toStartOf="@id/selected_indicator"
+        app:layout_constraintTop_toTopOf="@id/business_icon_container"
+        app:tint="#4F46E5" />
 
     <ImageView
         android:id="@+id/selected_indicator"

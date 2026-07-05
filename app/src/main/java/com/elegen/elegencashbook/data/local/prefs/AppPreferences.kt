@@ -1,6 +1,7 @@
 package com.elegen.elegencashbook.data.local.prefs
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -64,6 +65,12 @@ class AppPreferences @Inject constructor(
     suspend fun setLastPulledAt(entityType: String, epochMillis: Long) {
         context.dataStore.edit { it[longPreferencesKey("last_pulled_$entityType")] = epochMillis }
     }
+
+    private val keyDarkTheme = booleanPreferencesKey("dark_theme")
+
+    val darkTheme: Flow<Boolean> = context.dataStore.data.map { it[keyDarkTheme] ?: false }
+    suspend fun setDarkTheme(enabled: Boolean) { context.dataStore.edit { it[keyDarkTheme] = enabled } }
+    suspend fun darkThemeNow(): Boolean = context.dataStore.data.first()[keyDarkTheme] ?: false
 
     /** Stable per-install id for the sync envelope / LWW tiebreak (spec §6.6). */
     suspend fun deviceId(): String {

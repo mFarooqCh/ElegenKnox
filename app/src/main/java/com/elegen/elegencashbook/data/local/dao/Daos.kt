@@ -115,6 +115,10 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE id = :id")
     suspend fun getById(id: String): TransactionEntity?
 
+    /** Live single-entry view for the Entry Details screen; null once soft-deleted. */
+    @Query("SELECT * FROM transactions WHERE id = :id AND deletedAt IS NULL")
+    fun observeById(id: String): Flow<TransactionEntity?>
+
     /** Snapshot for book duplication — live (non-tombstoned) entries only. */
     @Query("SELECT * FROM transactions WHERE bookId = :bookId AND deletedAt IS NULL")
     suspend fun getAllActiveByBook(bookId: String): List<TransactionEntity>

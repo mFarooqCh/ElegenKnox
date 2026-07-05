@@ -18,10 +18,15 @@ import javax.inject.Inject
 
 /** Use cases (spec §12): one job each. Constructor-injected repository interfaces only. */
 
+private const val MAX_NAME_LENGTH = 64
+private const val MAX_DESCRIPTION_LENGTH = 512
+
 class CreateBusiness @Inject constructor(private val repo: BusinessRepository) {
     suspend operator fun invoke(name: String): Business {
-        require(name.isNotBlank()) { "Business name required" }
-        return repo.create(name.trim())
+        val trimmed = name.trim()
+        require(trimmed.isNotBlank()) { "Business name required" }
+        require(trimmed.length <= MAX_NAME_LENGTH) { "Business name too long" }
+        return repo.create(trimmed)
     }
 }
 
@@ -39,8 +44,10 @@ class ObserveActiveBusinessId @Inject constructor(private val settings: Settings
 
 class CreateBook @Inject constructor(private val repo: BookRepository) {
     suspend operator fun invoke(businessId: String, name: String): Book {
-        require(name.isNotBlank()) { "Book name required" }
-        return repo.create(businessId, name.trim())
+        val trimmed = name.trim()
+        require(trimmed.isNotBlank()) { "Book name required" }
+        require(trimmed.length <= MAX_NAME_LENGTH) { "Book name too long" }
+        return repo.create(businessId, trimmed)
     }
 }
 
@@ -51,8 +58,10 @@ class ListBooks @Inject constructor(private val repo: BookRepository) {
 
 class RenameBook @Inject constructor(private val repo: BookRepository) {
     suspend operator fun invoke(bookId: String, name: String) {
-        require(name.isNotBlank()) { "Book name required" }
-        repo.rename(bookId, name.trim())
+        val trimmed = name.trim()
+        require(trimmed.isNotBlank()) { "Book name required" }
+        require(trimmed.length <= MAX_NAME_LENGTH) { "Book name too long" }
+        repo.rename(bookId, trimmed)
     }
 }
 
@@ -85,13 +94,16 @@ class AddTransaction @Inject constructor(private val repo: TransactionRepository
         createdAt: Long,
     ): Transaction {
         require(amount.isPositive) { "Amount must be greater than 0" }
-        return repo.add(bookId, type, amount, description.trim(), createdAt)
+        val trimmed = description.trim()
+        require(trimmed.length <= MAX_DESCRIPTION_LENGTH) { "Description too long" }
+        return repo.add(bookId, type, amount, trimmed, createdAt)
     }
 }
 
 class UpdateTransaction @Inject constructor(private val repo: TransactionRepository) {
     suspend operator fun invoke(transaction: Transaction) {
         require(transaction.amount.isPositive) { "Amount must be greater than 0" }
+        require(transaction.description.length <= MAX_DESCRIPTION_LENGTH) { "Description too long" }
         repo.update(transaction)
     }
 }
@@ -102,6 +114,18 @@ class DeleteTransaction @Inject constructor(private val repo: TransactionReposit
 
 class RestoreTransaction @Inject constructor(private val repo: TransactionRepository) {
     suspend operator fun invoke(id: String) = repo.restore(id)
+}
+
+class ObserveTransaction @Inject constructor(private val repo: TransactionRepository) {
+    operator fun invoke(id: String): Flow<Transaction?> = repo.observeById(id)
+}
+
+class MoveTransaction @Inject constructor(private val repo: TransactionRepository) {
+    suspend operator fun invoke(id: String, targetBookId: String) = repo.move(id, targetBookId)
+}
+
+class CopyTransaction @Inject constructor(private val repo: TransactionRepository) {
+    suspend operator fun invoke(id: String, targetBookId: String): Transaction = repo.copyTo(id, targetBookId)
 }
 
 /** Balance math — exact Money arithmetic; overflow throws (constitution §4). */
