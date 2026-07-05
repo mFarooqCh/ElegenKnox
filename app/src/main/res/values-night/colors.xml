@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dark palette. Names mirror values/colors.xml exactly; only the values change so every
+     @color/ reference in the layouts adapts automatically. Sourced from the OLED dark mock. -->
+<resources>
+    <!-- white / black inherit from values/colors.xml (white stays white on brand buttons). -->
+
+    <color name="brand">#FF7C86F5</color>
+    <color name="brand_blue">#FF7C86F5</color>
+
+    <color name="surface">#FF1B1D24</color>
+    <color name="surface_page">#FF121317</color>
+    <color name="icon_chip_bg">#FF242A4A</color>
+
+    <color name="text_dark">#FFF1F2F6</color>
+    <color name="text_muted">#FF9297A8</color>
+    <color name="text_hint">#FF7B8190</color>
+
+    <color name="surface_gray">#FF2E323C</color>
+    <color name="divider_light">#FF2A2D36</color>
+
+    <color name="danger_red">#FFF1665F</color>
+    <color name="danger_red_bg">#FF3A1A19</color>
+    <color name="danger_stroke">#FF5B1B19</color>
+    <color name="success_green">#FF3DC488</color>
+    <color name="success_green_bg">#FF15301F</color>
+    <color name="unselected_gray">#FF4A4E5A</color>
+
+    <color name="amber_text">#FFE3C27A</color>
+    <color name="amber_bg">#FF332A12</color>
+    <color name="amber_icon">#FFE3C27A</color>
+
+    <color name="date_header_bg">#FF17181D</color>
+    <color name="date_header_text">#FFC7C9D6</color>
+</resources>

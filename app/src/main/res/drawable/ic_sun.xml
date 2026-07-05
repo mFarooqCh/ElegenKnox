@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="@color/text_dark">
+    <!-- Outline sun: hollow centre disc + rays (Light theme). -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M12,8.2 A3.8,3.8 0 1 0 12,15.8 A3.8,3.8 0 1 0 12,8.2 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M12,2.2 L12,4.2 M12,19.8 L12,21.8 M2.2,12 L4.2,12 M19.8,12 L21.8,12 M4.9,4.9 L6.3,6.3 M17.7,17.7 L19.1,19.1 M19.1,4.9 L17.7,6.3 M6.3,17.7 L4.9,19.1" />
+</vector>

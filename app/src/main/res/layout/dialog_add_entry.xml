@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="#FFFFFF">
+    android:background="@color/surface">
 
     <!-- ── Header bar ── -->
     <LinearLayout
@@ -21,7 +21,7 @@
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:background="@drawable/round_shape"
-            android:backgroundTint="#DCFCE7">
+            android:backgroundTint="@color/success_green_bg">
 
             <ImageView
                 android:id="@+id/dialog_icon"
@@ -29,7 +29,7 @@
                 android:layout_height="16dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_plus"
-                app:tint="#16A34A" />
+                app:tint="@color/success_green" />
         </FrameLayout>
 
         <TextView
@@ -38,7 +38,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Add Cash In Entry"
-            android:textColor="#16A34A"
+            android:textColor="@color/success_green"
             android:textSize="17sp"
             android:textStyle="bold"
             android:layout_marginStart="10dp" />
@@ -51,11 +51,11 @@
             android:padding="8dp"
             android:src="@drawable/ic_close"
             android:contentDescription="Close"
-            app:tint="#6B7280" />
+            app:tint="@color/text_muted" />
 
     </LinearLayout>
 
-    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E5E7EB" />
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/surface_gray" />
 
     <!-- ── Date & Time row ── -->
     <LinearLayout
@@ -85,7 +85,7 @@
                 android:layout_height="16dp"
                 android:src="@drawable/ic_calendar"
                 android:contentDescription="Date"
-                app:tint="#6B7280" />
+                app:tint="@color/text_muted" />
 
             <TextView
                 android:id="@+id/tv_selected_date"
@@ -94,7 +94,7 @@
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
                 android:text="28/06/2026"
-                android:textColor="#111827"
+                android:textColor="@color/text_dark"
                 android:textSize="13sp" />
         </LinearLayout>
 
@@ -114,7 +114,7 @@
                 android:layout_height="16dp"
                 android:src="@drawable/ic_clock"
                 android:contentDescription="Time"
-                app:tint="#6B7280" />
+                app:tint="@color/text_muted" />
 
             <TextView
                 android:id="@+id/tv_selected_time"
@@ -123,13 +123,13 @@
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
                 android:text="11:39 pm"
-                android:textColor="#111827"
+                android:textColor="@color/text_dark"
                 android:textSize="13sp" />
         </LinearLayout>
 
     </LinearLayout>
 
-    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E5E7EB" />
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/surface_gray" />
 
     <!-- ── Amount field ── -->
     <com.google.android.material.textfield.TextInputLayout
@@ -141,8 +141,8 @@
         android:layout_marginEnd="16dp"
         android:layout_marginTop="20dp"
         android:hint="Amount *"
-        app:hintTextColor="#DC2626"
-        app:boxStrokeColor="#2563EB"
+        app:hintTextColor="@color/danger_red"
+        app:boxStrokeColor="@color/brand_blue"
         app:boxStrokeWidth="2dp">
 
         <com.google.android.material.textfield.TextInputEditText
@@ -150,7 +150,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:inputType="numberDecimal"
-            android:textColor="#16A34A"
+            android:textColor="@color/success_green"
             android:textSize="22sp"
             android:textStyle="bold" />
     </com.google.android.material.textfield.TextInputLayout>
@@ -165,7 +165,7 @@
         android:layout_marginEnd="16dp"
         android:layout_marginTop="12dp"
         android:hint="Remark (optional)"
-        app:boxStrokeColor="#D1D5DB"
+        app:boxStrokeColor="@color/unselected_gray"
         app:boxStrokeWidth="1dp">
 
         <com.google.android.material.textfield.TextInputEditText
@@ -174,7 +174,7 @@
             android:layout_height="wrap_content"
             android:inputType="textCapSentences"
             android:maxLength="512"
-            android:textColor="#111827"
+            android:textColor="@color/text_dark"
             android:textSize="16sp" />
     </com.google.android.material.textfield.TextInputLayout>
 
@@ -198,8 +198,8 @@
             android:text="SAVE &amp; ADD NEW"
             android:textAllCaps="true"
             android:textSize="12sp"
-            android:textColor="#374151"
-            app:strokeColor="#D1D5DB"
+            android:textColor="@color/date_header_text"
+            app:strokeColor="@color/unselected_gray"
             app:cornerRadius="14dp" />
 
         <com.google.android.material.button.MaterialButton
@@ -210,8 +210,8 @@
             android:text="SAVE"
             android:textAllCaps="true"
             android:textSize="13sp"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#2563EB"
+            android:textColor="@color/white"
+            android:backgroundTint="@color/brand_blue"
             app:cornerRadius="14dp" />
 
     </LinearLayout>

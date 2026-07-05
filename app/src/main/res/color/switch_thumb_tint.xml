@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- White thumb in both states / both themes (contrasts brand-on and gray-off tracks). -->
+    <item android:color="@color/white" />
+</selector>

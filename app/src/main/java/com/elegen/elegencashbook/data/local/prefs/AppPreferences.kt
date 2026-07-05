@@ -1,7 +1,6 @@
 package com.elegen.elegencashbook.data.local.prefs
 
 import android.content.Context
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -66,11 +65,17 @@ class AppPreferences @Inject constructor(
         context.dataStore.edit { it[longPreferencesKey("last_pulled_$entityType")] = epochMillis }
     }
 
-    private val keyDarkTheme = booleanPreferencesKey("dark_theme")
+    // Was a boolean "dark_theme"; now a 3-way mode. Any pre-existing boolean value is simply ignored
+    // (falls back to SYSTEM), which is the sane default for an upgrade.
+    private val keyThemeMode = stringPreferencesKey("theme_mode")
 
-    val darkTheme: Flow<Boolean> = context.dataStore.data.map { it[keyDarkTheme] ?: false }
-    suspend fun setDarkTheme(enabled: Boolean) { context.dataStore.edit { it[keyDarkTheme] = enabled } }
-    suspend fun darkThemeNow(): Boolean = context.dataStore.data.first()[keyDarkTheme] ?: false
+    val themeMode: Flow<ThemeMode> =
+        context.dataStore.data.map { ThemeMode.fromKey(it[keyThemeMode]) }
+    suspend fun setThemeMode(mode: ThemeMode) {
+        context.dataStore.edit { it[keyThemeMode] = mode.key }
+    }
+    suspend fun themeModeNow(): ThemeMode =
+        ThemeMode.fromKey(context.dataStore.data.first()[keyThemeMode])
 
     /** Stable per-install id for the sync envelope / LWW tiebreak (spec §6.6). */
     suspend fun deviceId(): String {

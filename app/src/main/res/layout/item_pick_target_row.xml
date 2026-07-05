@@ -18,7 +18,7 @@
         android:layout_width="20dp"
         android:layout_height="20dp"
         android:src="@drawable/ic_radio_unchecked"
-        app:tint="#D1D5DB" />
+        app:tint="@color/unselected_gray" />
 
     <FrameLayout
         android:layout_width="32dp"
@@ -31,7 +31,7 @@
             android:layout_width="14dp"
             android:layout_height="14dp"
             android:layout_gravity="center"
-            app:tint="#4F46E5" />
+            app:tint="@color/brand" />
     </FrameLayout>
 
     <LinearLayout

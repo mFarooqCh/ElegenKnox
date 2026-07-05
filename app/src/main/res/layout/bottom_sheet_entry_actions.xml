@@ -28,7 +28,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Actions"
-            android:textColor="#111827"
+            android:textColor="@color/text_dark"
             android:textSize="17sp"
             android:textStyle="bold" />
 
@@ -40,10 +40,10 @@
             android:contentDescription="Close"
             android:padding="9dp"
             android:src="@drawable/ic_close"
-            app:tint="#6B7280" />
+            app:tint="@color/text_muted" />
     </LinearLayout>
 
-    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E5E7EB" />
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/surface_gray" />
 
     <LinearLayout
         android:id="@+id/action_move_entry"
@@ -67,7 +67,7 @@
                 android:layout_height="18dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_move"
-                app:tint="#4F46E5" />
+                app:tint="@color/brand" />
         </FrameLayout>
 
         <LinearLayout
@@ -81,7 +81,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Move Entry"
-                android:textColor="#111827"
+                android:textColor="@color/text_dark"
                 android:textSize="15sp"
                 android:textStyle="bold" />
 
@@ -90,12 +90,12 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:text="Entry will be moved to another book"
-                android:textColor="#6B7280"
+                android:textColor="@color/text_muted"
                 android:textSize="12sp" />
         </LinearLayout>
     </LinearLayout>
 
-    <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="20dp" android:layout_marginEnd="20dp" android:background="#F3F4F6" />
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="20dp" android:layout_marginEnd="20dp" android:background="@color/divider_light" />
 
     <LinearLayout
         android:id="@+id/action_copy_entry"
@@ -119,7 +119,7 @@
                 android:layout_height="18dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_duplicate"
-                app:tint="#4F46E5" />
+                app:tint="@color/brand" />
         </FrameLayout>
 
         <LinearLayout
@@ -133,7 +133,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Copy Entry"
-                android:textColor="#111827"
+                android:textColor="@color/text_dark"
                 android:textSize="15sp"
                 android:textStyle="bold" />
 
@@ -142,12 +142,12 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:text="Entry will stay in both books"
-                android:textColor="#6B7280"
+                android:textColor="@color/text_muted"
                 android:textSize="12sp" />
         </LinearLayout>
     </LinearLayout>
 
-    <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="20dp" android:layout_marginEnd="20dp" android:background="#F3F4F6" />
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="20dp" android:layout_marginEnd="20dp" android:background="@color/divider_light" />
 
     <LinearLayout
         android:id="@+id/action_delete_entry"
@@ -165,14 +165,14 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="@drawable/bg_icon_square"
-            android:backgroundTint="#FEE2E2">
+            android:backgroundTint="@color/danger_red_bg">
 
             <ImageView
                 android:layout_width="18dp"
                 android:layout_height="18dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_delete"
-                app:tint="#DC2626" />
+                app:tint="@color/danger_red" />
         </FrameLayout>
 
         <LinearLayout
@@ -186,7 +186,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Delete Entry"
-                android:textColor="#DC2626"
+                android:textColor="@color/danger_red"
                 android:textSize="15sp"
                 android:textStyle="bold" />
 
@@ -195,7 +195,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:text="You can undo right after deleting"
-                android:textColor="#6B7280"
+                android:textColor="@color/text_muted"
                 android:textSize="12sp" />
         </LinearLayout>
     </LinearLayout>

@@ -14,7 +14,7 @@
         android:layout_width="44dp"
         android:layout_height="44dp"
         android:background="@drawable/round_shape"
-        android:backgroundTint="#E0E7FF"
+        android:backgroundTint="@color/icon_chip_bg"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
@@ -24,7 +24,7 @@
             android:layout_height="22dp"
             android:layout_gravity="center"
             android:src="@drawable/ic_book_decor"
-            app:tint="#4F46E5" />
+            app:tint="@color/brand" />
     </FrameLayout>
 
     <LinearLayout
@@ -42,7 +42,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Studio House"
-            android:textColor="#111827"
+            android:textColor="@color/text_dark"
             android:textSize="16sp"
             android:textStyle="bold" />
 
@@ -52,7 +52,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:text="Owner"
-            android:textColor="#6B7280"
+            android:textColor="@color/text_muted"
             android:textSize="13sp" />
 
         <TextView
@@ -60,7 +60,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="3 books"
-            android:textColor="#6B7280"
+            android:textColor="@color/text_muted"
             android:textSize="13sp" />
     </LinearLayout>
 
@@ -76,7 +76,7 @@
         app:layout_constraintBottom_toBottomOf="@id/business_icon_container"
         app:layout_constraintEnd_toStartOf="@id/selected_indicator"
         app:layout_constraintTop_toTopOf="@id/business_icon_container"
-        app:tint="#4F46E5" />
+        app:tint="@color/brand" />
 
     <ImageView
         android:id="@+id/selected_indicator"
@@ -86,7 +86,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:tint="#D1D5DB"
+        app:tint="@color/unselected_gray"
         tools:src="@drawable/ic_check_circle"
-        tools:tint="#16A34A" />
+        tools:tint="@color/success_green" />
 </androidx.constraintlayout.widget.ConstraintLayout>

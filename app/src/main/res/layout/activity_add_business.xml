@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F8FAFC">
+    android:background="@color/surface_page">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -28,26 +28,26 @@
                 android:contentDescription="Back"
                 android:padding="8dp"
                 android:src="@drawable/ic_arrow_back"
-                app:tint="#111827" />
+                app:tint="@color/text_dark" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:text="Add Business Name"
-                android:textColor="#0F172A"
+                android:textColor="@color/text_dark"
                 android:textSize="18sp"
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginTop="16dp" android:background="#E5E7EB" />
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginTop="16dp" android:background="@color/surface_gray" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
             android:text="Business Name"
-            android:textColor="#4F46E5"
+            android:textColor="@color/brand"
             android:textSize="13sp"
             android:textStyle="bold" />
 
@@ -57,7 +57,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            app:boxStrokeColor="#4F46E5"
+            app:boxStrokeColor="@color/brand"
             app:boxCornerRadiusTopStart="16dp"
             app:boxCornerRadiusTopEnd="16dp"
             app:boxCornerRadiusBottomStart="16dp"
@@ -78,7 +78,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:text="This is how your business appears across CashBook. You can change it later in Settings."
-            android:textColor="#9CA3AF"
+            android:textColor="@color/text_hint"
             android:textSize="12sp" />
 
         <View
@@ -94,8 +94,8 @@
             android:text="NEXT"
             android:textAllCaps="true"
             android:textStyle="bold"
-            android:backgroundTint="#E5E7EB"
-            android:textColor="#6B7280"
+            android:backgroundTint="@color/surface_gray"
+            android:textColor="@color/text_muted"
             app:icon="@android:drawable/ic_media_play"
             app:iconGravity="end"
             app:iconSize="16dp"

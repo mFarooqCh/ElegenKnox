@@ -20,7 +20,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Select Business"
-            android:textColor="#0F172A"
+            android:textColor="@color/text_dark"
             android:textSize="18sp"
             android:textStyle="bold" />
 
@@ -32,10 +32,10 @@
             android:contentDescription="Close"
             android:padding="8dp"
             android:src="@drawable/ic_close"
-            app:tint="#111827" />
+            app:tint="@color/text_dark" />
     </LinearLayout>
 
-    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#E5E7EB" />
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/surface_gray" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/business_list"
@@ -54,8 +54,8 @@
         android:text="ADD NEW BUSINESS"
         android:textAllCaps="true"
         android:textStyle="bold"
-        android:backgroundTint="#F3F4F6"
-        android:textColor="#6B7280"
+        android:backgroundTint="@color/divider_light"
+        android:textColor="@color/text_muted"
         app:icon="@android:drawable/ic_input_add"
         app:iconSize="18dp"
         app:iconPadding="6dp"

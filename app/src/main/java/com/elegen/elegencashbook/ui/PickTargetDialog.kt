@@ -18,7 +18,8 @@ import com.google.android.material.button.MaterialButton
  */
 object PickTargetDialog {
 
-    data class Item(val id: String, val title: String, val subtitle: String)
+    /** [iconRes] overrides the shared header icon for this row; null = use the header icon. */
+    data class Item(val id: String, val title: String, val subtitle: String, val iconRes: Int? = null)
 
     fun show(
         context: Context,
@@ -26,6 +27,7 @@ object PickTargetDialog {
         headerTitle: String,
         headerSubtitle: String,
         items: List<Item>,
+        selectedId: String? = null,
         onConfirm: (Item) -> Unit,
     ) {
         val view = LayoutInflater.from(context).inflate(R.layout.dialog_pick_target, null)
@@ -37,14 +39,14 @@ object PickTargetDialog {
         val listContainer = view.findViewById<LinearLayout>(R.id.target_list_container)
         val rows = items.map { item ->
             val row = LayoutInflater.from(context).inflate(R.layout.item_pick_target_row, listContainer, false)
-            row.findViewById<ImageView>(R.id.row_icon).setImageResource(iconRes)
+            row.findViewById<ImageView>(R.id.row_icon).setImageResource(item.iconRes ?: iconRes)
             row.findViewById<TextView>(R.id.row_title).text = item.title
             row.findViewById<TextView>(R.id.row_subtitle).text = item.subtitle
             listContainer.addView(row)
             row
         }
 
-        var selectedIndex = 0
+        var selectedIndex = items.indexOfFirst { it.id == selectedId }.coerceAtLeast(0)
 
         fun renderSelection() {
             rows.forEachIndexed { index, row ->

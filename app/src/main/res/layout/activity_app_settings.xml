@@ -5,14 +5,14 @@
     android:id="@+id/app_settings_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F8FAFC">
+    android:background="@color/surface_page">
 
     <!-- ── Header ── -->
     <LinearLayout
         android:id="@+id/app_settings_top_bar"
         android:layout_width="0dp"
         android:layout_height="56dp"
-        android:background="#FFFFFF"
+        android:background="@color/surface"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingEnd="20dp"
@@ -28,7 +28,7 @@
             android:contentDescription="Back"
             android:padding="14dp"
             android:src="@drawable/ic_arrow_back"
-            app:tint="#111827" />
+            app:tint="@color/text_dark" />
 
         <TextView
             android:layout_width="0dp"
@@ -36,7 +36,7 @@
             android:layout_weight="1"
             android:layout_marginStart="4dp"
             android:text="App Settings"
-            android:textColor="#0F172A"
+            android:textColor="@color/text_dark"
             android:textSize="18sp"
             android:textStyle="bold" />
     </LinearLayout>
@@ -44,7 +44,7 @@
     <View
         android:layout_width="0dp"
         android:layout_height="1dp"
-        android:background="#E5E7EB"
+        android:background="@color/surface_gray"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/app_settings_top_bar" />
@@ -88,14 +88,14 @@
                         android:layout_width="36dp"
                         android:layout_height="36dp"
                         android:background="@drawable/round_shape"
-                        android:backgroundTint="#E0E7FF">
+                        android:backgroundTint="@color/icon_chip_bg">
 
                         <ImageView
                             android:layout_width="18dp"
                             android:layout_height="18dp"
                             android:layout_gravity="center"
                             android:src="@drawable/ic_bell"
-                            app:tint="#4F46E5" />
+                            app:tint="@color/brand" />
                     </FrameLayout>
 
                     <TextView
@@ -116,8 +116,8 @@
                     android:text="ENABLE NOTIFICATIONS"
                     android:textSize="13sp"
                     app:icon="@drawable/ic_bell"
-                    app:iconTint="#FFFFFF"
-                    app:backgroundTint="#4F46E5"
+                    app:iconTint="@color/white"
+                    app:backgroundTint="@color/brand"
                     app:cornerRadius="10dp" />
             </LinearLayout>
 
@@ -155,14 +155,14 @@
                         android:layout_width="36dp"
                         android:layout_height="36dp"
                         android:background="@drawable/round_shape"
-                        android:backgroundTint="#E0E7FF">
+                        android:backgroundTint="@color/icon_chip_bg">
 
                         <ImageView
                             android:layout_width="18dp"
                             android:layout_height="18dp"
                             android:layout_gravity="center"
                             android:src="@drawable/ic_cloud"
-                            app:tint="#4F46E5" />
+                            app:tint="@color/brand" />
                     </FrameLayout>
 
                     <LinearLayout
@@ -194,10 +194,10 @@
                         android:layout_width="18dp"
                         android:layout_height="18dp"
                         android:src="@drawable/ic_chevron_right"
-                        app:tint="#9CA3AF" />
+                        app:tint="@color/text_hint" />
                 </LinearLayout>
 
-                <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:background="#F3F4F6" />
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:background="@color/divider_light" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -213,14 +213,14 @@
                         android:layout_width="36dp"
                         android:layout_height="36dp"
                         android:background="@drawable/round_shape"
-                        android:backgroundTint="#E0E7FF">
+                        android:backgroundTint="@color/icon_chip_bg">
 
                         <ImageView
                             android:layout_width="18dp"
                             android:layout_height="18dp"
                             android:layout_gravity="center"
                             android:src="@drawable/ic_lock"
-                            app:tint="#4F46E5" />
+                            app:tint="@color/brand" />
                     </FrameLayout>
 
                     <LinearLayout
@@ -247,10 +247,13 @@
                             android:textSize="12sp" />
                     </LinearLayout>
 
-                    <androidx.appcompat.widget.SwitchCompat
+                    <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/switch_app_lock"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        app:thumbTint="@color/switch_thumb_tint"
+                        app:trackTint="@color/switch_track_tint"
+                        app:trackDecorationTint="@android:color/transparent" />
                 </LinearLayout>
             </LinearLayout>
 
@@ -287,14 +290,14 @@
                         android:layout_width="36dp"
                         android:layout_height="36dp"
                         android:background="@drawable/round_shape"
-                        android:backgroundTint="#E0E7FF">
+                        android:backgroundTint="@color/icon_chip_bg">
 
                         <ImageView
                             android:layout_width="18dp"
                             android:layout_height="18dp"
                             android:layout_gravity="center"
                             android:src="@drawable/ic_bell"
-                            app:tint="#4F46E5" />
+                            app:tint="@color/brand" />
                     </FrameLayout>
 
                     <LinearLayout
@@ -321,13 +324,16 @@
                             android:textSize="12sp" />
                     </LinearLayout>
 
-                    <androidx.appcompat.widget.SwitchCompat
+                    <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/switch_group_book_notifications"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        app:thumbTint="@color/switch_thumb_tint"
+                        app:trackTint="@color/switch_track_tint"
+                        app:trackDecorationTint="@android:color/transparent" />
                 </LinearLayout>
 
-                <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:background="#F3F4F6" />
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:background="@color/divider_light" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -343,14 +349,14 @@
                         android:layout_width="36dp"
                         android:layout_height="36dp"
                         android:background="@drawable/round_shape"
-                        android:backgroundTint="#E0E7FF">
+                        android:backgroundTint="@color/icon_chip_bg">
 
                         <ImageView
                             android:layout_width="18dp"
                             android:layout_height="18dp"
                             android:layout_gravity="center"
                             android:src="@drawable/ic_calculator"
-                            app:tint="#4F46E5" />
+                            app:tint="@color/brand" />
                     </FrameLayout>
 
                     <LinearLayout
@@ -377,10 +383,13 @@
                             android:textSize="12sp" />
                     </LinearLayout>
 
-                    <androidx.appcompat.widget.SwitchCompat
+                    <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/switch_amount_field_calculator"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        app:thumbTint="@color/switch_thumb_tint"
+                        app:trackTint="@color/switch_track_tint"
+                        app:trackDecorationTint="@android:color/transparent" />
                 </LinearLayout>
             </LinearLayout>
 
@@ -419,14 +428,14 @@
                         android:layout_width="36dp"
                         android:layout_height="36dp"
                         android:background="@drawable/round_shape"
-                        android:backgroundTint="#E0E7FF">
+                        android:backgroundTint="@color/icon_chip_bg">
 
                         <ImageView
                             android:layout_width="18dp"
                             android:layout_height="18dp"
                             android:layout_gravity="center"
                             android:src="@drawable/ic_language"
-                            app:tint="#4F46E5" />
+                            app:tint="@color/brand" />
                     </FrameLayout>
 
                     <LinearLayout
@@ -458,7 +467,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="8dp"
                         android:text="English"
-                        android:textColor="#4F46E5"
+                        android:textColor="@color/brand"
                         android:textSize="13sp"
                         android:textStyle="bold" />
 
@@ -466,16 +475,18 @@
                         android:layout_width="18dp"
                         android:layout_height="18dp"
                         android:src="@drawable/ic_chevron_right"
-                        app:tint="#9CA3AF" />
+                        app:tint="@color/text_hint" />
                 </LinearLayout>
 
-                <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:background="#F3F4F6" />
+                <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginStart="16dp" android:layout_marginEnd="16dp" android:background="@color/divider_light" />
 
                 <LinearLayout
+                    android:id="@+id/row_theme"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
+                    android:background="?attr/selectableItemBackground"
                     android:paddingStart="16dp"
                     android:paddingEnd="16dp"
                     android:paddingTop="14dp"
@@ -485,14 +496,14 @@
                         android:layout_width="36dp"
                         android:layout_height="36dp"
                         android:background="@drawable/round_shape"
-                        android:backgroundTint="#E0E7FF">
+                        android:backgroundTint="@color/icon_chip_bg">
 
                         <ImageView
                             android:layout_width="18dp"
                             android:layout_height="18dp"
                             android:layout_gravity="center"
                             android:src="@drawable/ic_moon"
-                            app:tint="#4F46E5" />
+                            app:tint="@color/brand" />
                     </FrameLayout>
 
                     <LinearLayout
@@ -505,7 +516,7 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Dark Theme"
+                            android:text="Theme"
                             android:textColor="@color/text_dark"
                             android:textSize="15sp"
                             android:textStyle="bold" />
@@ -514,15 +525,26 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
-                            android:text="Switch to a darker color scheme"
+                            android:text="Choose light, dark, or system default"
                             android:textColor="@color/text_muted"
                             android:textSize="12sp" />
                     </LinearLayout>
 
-                    <androidx.appcompat.widget.SwitchCompat
-                        android:id="@+id/switch_dark_theme"
+                    <TextView
+                        android:id="@+id/theme_value"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="8dp"
+                        android:text="System"
+                        android:textColor="@color/brand"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_chevron_right"
+                        app:tint="@color/text_hint" />
                 </LinearLayout>
             </LinearLayout>
 

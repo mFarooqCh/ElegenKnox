@@ -1,12 +1,12 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Base.Theme.ElegenCashBook" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">#2563EB</item>
-        <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="android:statusBarColor">#FFFFFF</item>
-        <item name="android:navigationBarColor">#FFFFFF</item>
+        <item name="colorPrimary">@color/brand</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="android:statusBarColor">@color/surface_page</item>
+        <item name="android:navigationBarColor">@color/surface_page</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
-        <item name="android:windowBackground">#F8FAFC</item>
+        <item name="android:windowBackground">@color/surface_page</item>
     </style>
 
     <style name="Theme.ElegenCashBook" parent="Base.Theme.ElegenCashBook" />

@@ -14,7 +14,7 @@
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:background="@drawable/round_shape"
-        android:backgroundTint="#FEE2E2">
+        android:backgroundTint="@color/danger_red_bg">
 
         <TextView
             android:layout_width="wrap_content"
@@ -122,8 +122,8 @@
             android:layout_marginEnd="10dp"
             android:text="CANCEL"
             android:textSize="13sp"
-            android:textColor="#374151"
-            app:strokeColor="#D1D5DB"
+            android:textColor="@color/date_header_text"
+            app:strokeColor="@color/unselected_gray"
             app:cornerRadius="14dp" />
 
         <com.google.android.material.button.MaterialButton
@@ -133,7 +133,7 @@
             android:layout_weight="1"
             android:text="DELETE"
             android:textSize="13sp"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/white"
             android:backgroundTint="@color/danger_red"
             app:cornerRadius="14dp" />
     </LinearLayout>

@@ -20,7 +20,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Add New Book"
-            android:textColor="#0F172A"
+            android:textColor="@color/text_dark"
             android:textSize="18sp"
             android:textStyle="bold" />
 
@@ -32,17 +32,17 @@
             android:contentDescription="Close"
             android:padding="8dp"
             android:src="@drawable/ic_close"
-            app:tint="#111827" />
+            app:tint="@color/text_dark" />
     </LinearLayout>
 
-    <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginTop="12dp" android:background="#E5E7EB" />
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginTop="12dp" android:background="@color/surface_gray" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="Enter Book Name"
-        android:textColor="#111827"
+        android:textColor="@color/text_dark"
         android:textSize="13sp"
         android:textStyle="bold" />
 
@@ -52,7 +52,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        app:boxStrokeColor="#4F46E5"
+        app:boxStrokeColor="@color/brand"
         app:boxCornerRadiusTopStart="16dp"
         app:boxCornerRadiusTopEnd="16dp"
         app:boxCornerRadiusBottomStart="16dp"
@@ -72,7 +72,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="18dp"
         android:text="Suggestions"
-        android:textColor="#9CA3AF"
+        android:textColor="@color/text_hint"
         android:textSize="12sp" />
 
     <com.google.android.material.chip.ChipGroup
@@ -88,8 +88,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="June Expenses"
-            android:textColor="#4F46E5"
-            app:chipBackgroundColor="#EEF2FF"
+            android:textColor="@color/brand"
+            app:chipBackgroundColor="@color/icon_chip_bg"
             app:chipStrokeWidth="0dp" />
 
         <com.google.android.material.chip.Chip
@@ -98,8 +98,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Petty Cash Book"
-            android:textColor="#4F46E5"
-            app:chipBackgroundColor="#EEF2FF"
+            android:textColor="@color/brand"
+            app:chipBackgroundColor="@color/icon_chip_bg"
             app:chipStrokeWidth="0dp" />
 
         <com.google.android.material.chip.Chip
@@ -108,8 +108,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Project Book"
-            android:textColor="#4F46E5"
-            app:chipBackgroundColor="#EEF2FF"
+            android:textColor="@color/brand"
+            app:chipBackgroundColor="@color/icon_chip_bg"
             app:chipStrokeWidth="0dp" />
 
         <com.google.android.material.chip.Chip
@@ -118,8 +118,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Client Record"
-            android:textColor="#4F46E5"
-            app:chipBackgroundColor="#EEF2FF"
+            android:textColor="@color/brand"
+            app:chipBackgroundColor="@color/icon_chip_bg"
             app:chipStrokeWidth="0dp" />
     </com.google.android.material.chip.ChipGroup>
 
@@ -132,8 +132,8 @@
         android:text="ADD NEW BOOK"
         android:textAllCaps="true"
         android:textStyle="bold"
-        android:backgroundTint="#F3F4F6"
-        android:textColor="#6B7280"
+        android:backgroundTint="@color/divider_light"
+        android:textColor="@color/text_muted"
         app:icon="@android:drawable/ic_input_add"
         app:iconSize="18dp"
         app:iconPadding="6dp"

@@ -7,11 +7,14 @@ import android.os.Bundle
 import android.view.View
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.app.AppCompatActivity
+import com.elegen.elegencashbook.data.local.prefs.ThemeMode
+import com.elegen.elegencashbook.ui.PickTargetDialog
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -78,19 +81,37 @@ class AppSettingsActivity : AppCompatActivity() {
             }
         }
 
-        val switchDarkTheme = findViewById<SwitchCompat>(R.id.switch_dark_theme)
-        switchDarkTheme.setOnCheckedChangeListener { view, checked ->
-            if (!view.isPressed) return@setOnCheckedChangeListener
-            lifecycleScope.launch { appPreferences.setDarkTheme(checked) }
-            AppCompatDelegate.setDefaultNightMode(
-                if (checked) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO
-            )
-        }
+        val themeValue = findViewById<TextView>(R.id.theme_value)
+        findViewById<LinearLayout>(R.id.row_theme).setOnClickListener { showThemePicker() }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                appPreferences.darkTheme.collect { switchDarkTheme.isChecked = it }
+                appPreferences.themeMode.collect { themeValue.text = it.label }
             }
+        }
+    }
+
+    private fun showThemePicker() {
+        val current = ThemeMode.entries.firstOrNull { it.nightMode == AppCompatDelegate.getDefaultNightMode() }
+            ?: ThemeMode.SYSTEM
+        PickTargetDialog.show(
+            context = this,
+            iconRes = R.drawable.ic_moon,
+            headerTitle = "Theme",
+            headerSubtitle = "Choose how the app looks",
+            items = ThemeMode.entries.map {
+                val icon = when (it) {
+                    ThemeMode.SYSTEM -> R.drawable.ic_theme_system
+                    ThemeMode.LIGHT -> R.drawable.ic_sun
+                    ThemeMode.DARK -> R.drawable.ic_moon
+                }
+                PickTargetDialog.Item(it.key, it.label, it.desc, icon)
+            },
+            selectedId = current.key,
+        ) { item ->
+            val mode = ThemeMode.fromKey(item.id)
+            lifecycleScope.launch { appPreferences.setThemeMode(mode) }
+            AppCompatDelegate.setDefaultNightMode(mode.nightMode)
         }
     }
 }

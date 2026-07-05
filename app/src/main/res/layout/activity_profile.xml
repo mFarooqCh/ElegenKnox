@@ -5,14 +5,14 @@
     android:id="@+id/profile_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F8FAFC">
+    android:background="@color/surface_page">
 
     <!-- ── Header ── -->
     <LinearLayout
         android:id="@+id/profile_top_bar"
         android:layout_width="0dp"
         android:layout_height="56dp"
-        android:background="#FFFFFF"
+        android:background="@color/surface"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingEnd="20dp"
@@ -28,7 +28,7 @@
             android:contentDescription="Back"
             android:padding="14dp"
             android:src="@drawable/ic_arrow_back"
-            app:tint="#111827" />
+            app:tint="@color/text_dark" />
 
         <TextView
             android:layout_width="0dp"
@@ -36,7 +36,7 @@
             android:layout_weight="1"
             android:layout_marginStart="4dp"
             android:text="Your Profile"
-            android:textColor="#0F172A"
+            android:textColor="@color/text_dark"
             android:textSize="18sp"
             android:textStyle="bold" />
     </LinearLayout>
@@ -44,7 +44,7 @@
     <View
         android:layout_width="0dp"
         android:layout_height="1dp"
-        android:background="#E5E7EB"
+        android:background="@color/surface_gray"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/profile_top_bar" />
@@ -80,7 +80,7 @@
                     android:layout_width="64dp"
                     android:layout_height="64dp"
                     android:background="@drawable/round_shape"
-                    android:backgroundTint="#E0E7FF">
+                    android:backgroundTint="@color/icon_chip_bg">
 
                     <TextView
                         android:id="@+id/profile_avatar_initials"
@@ -88,7 +88,7 @@
                         android:layout_height="wrap_content"
                         android:layout_gravity="center"
                         android:text="AS"
-                        android:textColor="#4F46E5"
+                        android:textColor="@color/brand"
                         android:textSize="22sp"
                         android:textStyle="bold" />
                 </FrameLayout>
@@ -107,14 +107,14 @@
                         android:layout_width="16dp"
                         android:layout_height="16dp"
                         android:src="@drawable/ic_camera"
-                        app:tint="#4F46E5" />
+                        app:tint="@color/brand" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="6dp"
                         android:text="CHANGE PHOTO"
-                        android:textColor="#4F46E5"
+                        android:textColor="@color/brand"
                         android:textSize="13sp"
                         android:textStyle="bold"
                         android:letterSpacing="0.03" />
@@ -167,7 +167,7 @@
                     android:layout_height="wrap_content"
                     android:background="?attr/selectableItemBackground"
                     android:text="CHANGE"
-                    android:textColor="#4F46E5"
+                    android:textColor="@color/brand"
                     android:textSize="12sp"
                     android:textStyle="bold" />
             </LinearLayout>
@@ -192,14 +192,14 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:background="@drawable/bg_chip_pill"
-                android:backgroundTint="#FEF3C7"
+                android:backgroundTint="@color/amber_bg"
                 android:padding="12dp">
 
                 <ImageView
                     android:layout_width="18dp"
                     android:layout_height="18dp"
                     android:src="@drawable/ic_info"
-                    app:tint="#D97706" />
+                    app:tint="@color/amber_icon" />
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -212,7 +212,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Number not verified"
-                        android:textColor="#92400E"
+                        android:textColor="@color/amber_text"
                         android:textSize="13sp"
                         android:textStyle="bold" />
 
@@ -221,7 +221,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:text="Verify to receive alerts &amp; recover your account by SMS"
-                        android:textColor="#92400E"
+                        android:textColor="@color/amber_text"
                         android:textSize="12sp" />
                 </LinearLayout>
             </LinearLayout>
@@ -249,7 +249,7 @@
                     android:layout_height="wrap_content"
                     android:background="?attr/selectableItemBackground"
                     android:text="CHANGE"
-                    android:textColor="#4F46E5"
+                    android:textColor="@color/brand"
                     android:textSize="12sp"
                     android:textStyle="bold" />
             </LinearLayout>
@@ -319,7 +319,7 @@
         android:layout_marginBottom="16dp"
         android:text="SAVE CHANGES"
         android:textSize="14sp"
-        app:backgroundTint="#4F46E5"
+        app:backgroundTint="@color/brand"
         app:cornerRadius="10dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

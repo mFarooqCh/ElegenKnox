@@ -6,7 +6,7 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F8FAFC"
+    android:background="@color/surface_page"
     android:fitsSystemWindows="false"
     tools:context=".MainActivity">
 
@@ -17,7 +17,7 @@
         android:id="@+id/top_app_bar"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="#FFFFFF"
+        android:background="@color/surface"
         app:elevation="2dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -35,14 +35,14 @@
                 android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:background="@drawable/round_shape"
-                android:backgroundTint="#E0E7FF">
+                android:backgroundTint="@color/icon_chip_bg">
 
                 <ImageView
                     android:layout_width="18dp"
                     android:layout_height="18dp"
                     android:layout_gravity="center"
                     android:src="@drawable/ic_book_decor"
-                    app:tint="#4F46E5" />
+                    app:tint="@color/brand" />
             </FrameLayout>
 
             <!-- Business name + subtitle -->
@@ -68,7 +68,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="ElegenSol"
-                        android:textColor="#0F172A"
+                        android:textColor="@color/text_dark"
                         android:textSize="17sp"
                         android:textStyle="bold"
                         android:maxLines="1"
@@ -80,7 +80,7 @@
                         android:layout_height="16dp"
                         android:layout_marginStart="4dp"
                         android:src="@drawable/ic_chevron_down"
-                        app:tint="#6B7280" />
+                        app:tint="@color/text_muted" />
                 </LinearLayout>
 
                 <TextView
@@ -88,7 +88,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Tap to switch business"
-                    android:textColor="#6B7280"
+                    android:textColor="@color/text_muted"
                     android:textSize="12sp" />
             </LinearLayout>
 
@@ -100,7 +100,7 @@
                 android:contentDescription="Add Members"
                 android:padding="9dp"
                 android:src="@drawable/ic_person_add"
-                app:tint="#4F46E5" />
+                app:tint="@color/brand" />
 
         </LinearLayout>
 
@@ -132,7 +132,7 @@
                 android:id="@+id/hero_card"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:backgroundTint="#4F46E5"
+                android:backgroundTint="@color/brand"
                 app:cardCornerRadius="24dp"
                 app:cardElevation="0dp">
 
@@ -150,7 +150,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="Basics of CashBook"
-                            android:textColor="#FFFFFF"
+                            android:textColor="@color/white"
                             android:textSize="18sp"
                             android:textStyle="bold" />
 
@@ -159,7 +159,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
                             android:text="Learn to use cashbook"
-                            android:textColor="#E0E7FF"
+                            android:textColor="@color/icon_chip_bg"
                             android:textSize="14sp" />
 
                         <com.google.android.material.button.MaterialButton
@@ -170,13 +170,13 @@
                             android:paddingHorizontal="16dp"
                             android:text="Know more"
                             android:textAllCaps="false"
-                            android:textColor="#4F46E5"
+                            android:textColor="@color/brand"
                             android:textStyle="bold"
-                            android:backgroundTint="#FFFFFF"
+                            android:backgroundTint="@color/white"
                             app:icon="@android:drawable/ic_media_play"
                             app:iconGravity="end"
                             app:iconSize="14dp"
-                            app:iconTint="#4F46E5"
+                            app:iconTint="@color/brand"
                             app:cornerRadius="20dp" />
                     </LinearLayout>
 
@@ -190,7 +190,7 @@
                         android:contentDescription="Dismiss"
                         android:padding="8dp"
                         android:src="@drawable/ic_close"
-                        app:tint="#E0E7FF" />
+                        app:tint="@color/icon_chip_bg" />
 
                     <ImageView
                         android:layout_width="56dp"
@@ -199,7 +199,7 @@
                         android:layout_margin="18dp"
                         android:alpha="0.9"
                         android:src="@drawable/ic_book_decor"
-                        app:tint="#FFFFFF" />
+                        app:tint="@color/white" />
                 </FrameLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -216,7 +216,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="Your Books"
-                    android:textColor="#0F172A"
+                    android:textColor="@color/text_dark"
                     android:textSize="16sp"
                     android:textStyle="bold" />
 
@@ -228,7 +228,7 @@
                     android:contentDescription="Filter"
                     android:padding="6dp"
                     android:src="@drawable/ic_filter"
-                    app:tint="#4F46E5" />
+                    app:tint="@color/brand" />
 
                 <ImageButton
                     android:id="@+id/search_books_button"
@@ -239,7 +239,7 @@
                     android:contentDescription="Search"
                     android:padding="6dp"
                     android:src="@drawable/ic_search"
-                    app:tint="#4F46E5" />
+                    app:tint="@color/brand" />
             </LinearLayout>
 
             <!-- Tip card -->
@@ -248,7 +248,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:backgroundTint="#EEF2FF"
+                android:backgroundTint="@color/icon_chip_bg"
                 app:cardCornerRadius="14dp"
                 app:cardElevation="0dp">
 
@@ -265,7 +265,7 @@
                         android:layout_width="20dp"
                         android:layout_height="20dp"
                         android:src="@drawable/ic_lightbulb"
-                        app:tint="#4F46E5" />
+                        app:tint="@color/brand" />
 
                     <TextView
                         android:layout_width="0dp"
@@ -273,7 +273,7 @@
                         android:layout_weight="1"
                         android:layout_marginStart="10dp"
                         android:text="Tap to view your entries in this book"
-                        android:textColor="#4F46E5"
+                        android:textColor="@color/brand"
                         android:textSize="13sp" />
 
                     <ImageButton
@@ -284,7 +284,7 @@
                         android:contentDescription="Dismiss tip"
                         android:padding="8dp"
                         android:src="@drawable/ic_close"
-                        app:tint="#9CA3AF" />
+                        app:tint="@color/text_hint" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -295,7 +295,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 android:visibility="gone"
-                android:backgroundTint="#EEF2FF"
+                android:backgroundTint="@color/icon_chip_bg"
                 app:cardCornerRadius="14dp"
                 app:cardElevation="0dp"
                 tools:visibility="visible">
@@ -310,7 +310,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="No books yet — quick start"
-                        android:textColor="#4F46E5"
+                        android:textColor="@color/brand"
                         android:textStyle="bold"
                         android:textSize="13sp" />
 
@@ -327,8 +327,8 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="June Expenses"
-                            android:textColor="#4F46E5"
-                            app:chipBackgroundColor="#FFFFFF"
+                            android:textColor="@color/brand"
+                            app:chipBackgroundColor="@color/icon_chip_bg"
                             app:chipStrokeWidth="0dp" />
 
                         <com.google.android.material.chip.Chip
@@ -337,8 +337,8 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Petty Cash Book"
-                            android:textColor="#4F46E5"
-                            app:chipBackgroundColor="#FFFFFF"
+                            android:textColor="@color/brand"
+                            app:chipBackgroundColor="@color/icon_chip_bg"
                             app:chipStrokeWidth="0dp" />
 
                         <com.google.android.material.chip.Chip
@@ -347,8 +347,8 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Project Book"
-                            android:textColor="#4F46E5"
-                            app:chipBackgroundColor="#FFFFFF"
+                            android:textColor="@color/brand"
+                            app:chipBackgroundColor="@color/icon_chip_bg"
                             app:chipStrokeWidth="0dp" />
 
                         <com.google.android.material.chip.Chip
@@ -357,8 +357,8 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Client Record"
-                            android:textColor="#4F46E5"
-                            app:chipBackgroundColor="#FFFFFF"
+                            android:textColor="@color/brand"
+                            app:chipBackgroundColor="@color/icon_chip_bg"
                             app:chipStrokeWidth="0dp" />
                     </com.google.android.material.chip.ChipGroup>
                 </LinearLayout>
@@ -388,7 +388,7 @@
         android:layout_width="0dp"
         android:layout_height="3dp"
         android:orientation="horizontal"
-        android:background="#FFFFFF"
+        android:background="@color/surface"
         app:layout_constraintBottom_toTopOf="@id/bottom_navigation"
         app:layout_constraintEnd_toEndOf="@id/bottom_navigation"
         app:layout_constraintStart_toStartOf="@id/bottom_navigation">
@@ -406,7 +406,7 @@
         android:id="@+id/bottom_navigation"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="#FFFFFF"
+        android:background="@color/surface"
         app:itemIconTint="@color/nav_tab_tint"
         app:itemTextColor="@color/nav_tab_tint"
         app:labelVisibilityMode="labeled"
@@ -432,12 +432,12 @@
         android:textAllCaps="true"
         android:textSize="15sp"
         android:textStyle="bold"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/white"
         android:letterSpacing="0.03"
-        android:backgroundTint="#4F46E5"
+        android:backgroundTint="@color/brand"
         app:icon="@android:drawable/ic_input_add"
         app:iconSize="20dp"
-        app:iconTint="#FFFFFF"
+        app:iconTint="@color/white"
         app:iconGravity="textStart"
         app:iconPadding="10dp"
         app:cornerRadius="28dp"

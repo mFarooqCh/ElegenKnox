@@ -23,7 +23,7 @@
                 android:layout_width="20dp"
                 android:layout_height="20dp"
                 android:layout_gravity="center"
-                app:tint="#4F46E5" />
+                app:tint="@color/brand" />
         </FrameLayout>
 
         <LinearLayout
@@ -59,7 +59,7 @@
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="16dp"
-        android:background="#E5E7EB" />
+        android:background="@color/surface_gray" />
 
     <ScrollView
         android:layout_width="match_parent"
@@ -89,8 +89,8 @@
             android:layout_marginEnd="10dp"
             android:text="CANCEL"
             android:textSize="13sp"
-            android:textColor="#374151"
-            app:strokeColor="#D1D5DB"
+            android:textColor="@color/date_header_text"
+            app:strokeColor="@color/unselected_gray"
             app:cornerRadius="14dp" />
 
         <com.google.android.material.button.MaterialButton
@@ -100,8 +100,8 @@
             android:layout_weight="1"
             android:text="OK"
             android:textSize="13sp"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#4F46E5"
+            android:textColor="@color/white"
+            android:backgroundTint="@color/brand"
             app:cornerRadius="14dp" />
     </LinearLayout>
 

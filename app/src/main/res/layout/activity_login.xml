@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F8FAFC"
+    android:background="@color/surface_page"
     android:fillViewport="true">
 
     <LinearLayout
@@ -18,14 +18,14 @@
             android:layout_height="64dp"
             android:layout_marginTop="48dp"
             android:background="@drawable/round_shape"
-            android:backgroundTint="#E0E7FF">
+            android:backgroundTint="@color/icon_chip_bg">
 
             <ImageView
                 android:layout_width="32dp"
                 android:layout_height="32dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_book_decor"
-                app:tint="#4F46E5" />
+                app:tint="@color/brand" />
         </FrameLayout>
 
         <TextView
@@ -34,7 +34,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:text="Welcome back"
-            android:textColor="#0F172A"
+            android:textColor="@color/text_dark"
             android:textSize="22sp"
             android:textStyle="bold" />
 
@@ -44,17 +44,17 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:text="Sign in to sync and share your books"
-            android:textColor="#6B7280"
+            android:textColor="@color/text_muted"
             android:textSize="14sp" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:backgroundTint="#FFFFFF"
+            android:backgroundTint="@color/surface"
             app:cardCornerRadius="20dp"
             app:cardElevation="0dp"
-            app:strokeColor="#E5E7EB"
+            app:strokeColor="@color/surface_gray"
             app:strokeWidth="1dp">
 
             <LinearLayout
@@ -70,8 +70,8 @@
                     android:layout_height="wrap_content"
                     android:hint="Your name"
                     android:visibility="gone"
-                    app:boxStrokeColor="#4F46E5"
-                    app:hintTextColor="#4F46E5">
+                    app:boxStrokeColor="@color/brand"
+                    app:hintTextColor="@color/brand">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_display_name"
@@ -88,8 +88,8 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:hint="Email"
-                    app:boxStrokeColor="#4F46E5"
-                    app:hintTextColor="#4F46E5">
+                    app:boxStrokeColor="@color/brand"
+                    app:hintTextColor="@color/brand">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_email"
@@ -107,8 +107,8 @@
                     android:layout_marginTop="12dp"
                     android:hint="Phone (optional, e.g. +923001234567)"
                     android:visibility="gone"
-                    app:boxStrokeColor="#4F46E5"
-                    app:hintTextColor="#4F46E5">
+                    app:boxStrokeColor="@color/brand"
+                    app:hintTextColor="@color/brand">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_phone"
@@ -125,8 +125,8 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:hint="Password"
-                    app:boxStrokeColor="#4F46E5"
-                    app:hintTextColor="#4F46E5"
+                    app:boxStrokeColor="@color/brand"
+                    app:hintTextColor="@color/brand"
                     app:passwordToggleEnabled="true">
 
                     <com.google.android.material.textfield.TextInputEditText
@@ -142,7 +142,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:textColor="#DC2626"
+                    android:textColor="@color/danger_red"
                     android:textSize="13sp"
                     android:visibility="gone" />
 
@@ -151,7 +151,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="52dp"
                     android:layout_marginTop="16dp"
-                    android:backgroundTint="#4F46E5"
+                    android:backgroundTint="@color/brand"
                     android:text="Sign in"
                     android:textAllCaps="false"
                     android:textSize="15sp"
@@ -166,7 +166,7 @@
                     android:layout_marginTop="4dp"
                     android:text="New here? Create an account"
                     android:textAllCaps="false"
-                    android:textColor="#4F46E5" />
+                    android:textColor="@color/brand" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -178,9 +178,9 @@
             android:layout_marginTop="16dp"
             android:text="Continue without account"
             android:textAllCaps="false"
-            android:textColor="#0F172A"
+            android:textColor="@color/text_dark"
             app:cornerRadius="14dp"
-            app:strokeColor="#D1D5DB" />
+            app:strokeColor="@color/unselected_gray" />
 
         <TextView
             android:id="@+id/tv_server_note"
@@ -188,7 +188,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:text="Your data stays on this device until you sign in."
-            android:textColor="#9CA3AF"
+            android:textColor="@color/text_hint"
             android:textSize="12sp" />
     </LinearLayout>
 </ScrollView>
