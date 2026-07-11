@@ -22,6 +22,7 @@ import com.elegen.elegencashbook.feature.entry.EntryDetailsUiState
 import com.elegen.elegencashbook.feature.entry.EntryDetailsViewModel
 import com.elegen.elegencashbook.ui.DeleteConfirmDialog
 import com.elegen.elegencashbook.ui.EntryFormDialog
+import com.elegen.elegencashbook.ui.HistoryDialog
 import com.elegen.elegencashbook.ui.PickTargetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import dagger.hilt.android.AndroidEntryPoint
@@ -38,6 +39,8 @@ class EntryDetailsActivity : AppCompatActivity() {
     private lateinit var amountText: TextView
     private lateinit var descriptionText: TextView
     private lateinit var createdAtText: TextView
+    private lateinit var historyEmptyText: TextView
+    private lateinit var historyContainer: LinearLayout
 
     private var uiState = EntryDetailsUiState()
     private var finishedForMissingEntry = false
@@ -65,6 +68,8 @@ class EntryDetailsActivity : AppCompatActivity() {
         amountText = findViewById(R.id.entry_amount)
         descriptionText = findViewById(R.id.entry_description)
         createdAtText = findViewById(R.id.entry_created_at)
+        historyEmptyText = findViewById(R.id.entry_history_empty)
+        historyContainer = findViewById(R.id.entry_history_container)
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -97,6 +102,9 @@ class EntryDetailsActivity : AppCompatActivity() {
         amountText.setTextColor(accentColor)
         descriptionText.text = state.description.ifBlank { "No description" }
         createdAtText.text = state.createdLabelText
+
+        historyEmptyText.visibility = if (state.historyItems.isEmpty()) View.VISIBLE else View.GONE
+        HistoryDialog.populate(this, historyContainer, state.historyItems)
     }
 
     // ─────────────────────────────────────────────────────────────────────

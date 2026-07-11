@@ -56,3 +56,19 @@ data class BalanceSummary(
 ) {
     val net: Money get() = totalIn - totalOut
 }
+
+enum class HistoryEntityType { BOOK, TRANSACTION }
+
+enum class HistoryAction { CREATED, UPDATED, RENAMED, MOVED, COPIED, DELETED, RESTORED, CONFLICT_OVERWRITTEN }
+
+data class HistoryEntry(
+    val id: String,
+    val entityType: HistoryEntityType,
+    val entityId: String,
+    val bookId: String,
+    val action: HistoryAction,
+    /** "field=old→new;field2=old2→new2", null for CREATED/DELETED/RESTORED. */
+    val changes: String?,
+    val actorUid: String,
+    val at: Long,
+)

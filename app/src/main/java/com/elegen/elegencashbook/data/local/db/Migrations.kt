@@ -55,3 +55,17 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         )
     }
 }
+
+/** v3 → v4: adds the edit-history trail (append-only, no envelope — see [HistoryEntity]). */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `history_log` (" +
+                "`id` TEXT NOT NULL PRIMARY KEY, `entityType` TEXT NOT NULL, `entityId` TEXT NOT NULL, " +
+                "`bookId` TEXT NOT NULL, `action` TEXT NOT NULL, `changes` TEXT, `actorUid` TEXT NOT NULL, " +
+                "`deviceId` TEXT NOT NULL, `at` INTEGER NOT NULL)"
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_history_log_entityType_entityId_at` ON `history_log` (`entityType`, `entityId`, `at`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_history_log_bookId_at` ON `history_log` (`bookId`, `at`)")
+    }
+}

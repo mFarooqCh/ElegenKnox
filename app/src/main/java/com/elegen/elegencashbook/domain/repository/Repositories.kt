@@ -6,6 +6,8 @@ import com.elegen.elegencashbook.domain.model.BookWithBalance
 import com.elegen.elegencashbook.domain.model.Business
 import com.elegen.elegencashbook.domain.model.BusinessOverview
 import com.elegen.elegencashbook.domain.model.EntryType
+import com.elegen.elegencashbook.domain.model.HistoryEntityType
+import com.elegen.elegencashbook.domain.model.HistoryEntry
 import com.elegen.elegencashbook.domain.model.SessionState
 import com.elegen.elegencashbook.domain.model.Transaction
 import kotlinx.coroutines.flow.Flow
@@ -51,6 +53,11 @@ interface TransactionRepository {
     suspend fun move(id: String, targetBookId: String)
     /** Copies the entry into another book; the original stays where it is. */
     suspend fun copyTo(id: String, targetBookId: String): Transaction
+}
+
+/** Read-only edit-history trail (edit-history feature). Writes are internal to Book/TransactionRepositoryImpl — they already own the mutation's transaction boundary. */
+interface HistoryRepository {
+    fun observeForEntity(entityType: HistoryEntityType, entityId: String): Flow<List<HistoryEntry>>
 }
 
 interface SettingsRepository {

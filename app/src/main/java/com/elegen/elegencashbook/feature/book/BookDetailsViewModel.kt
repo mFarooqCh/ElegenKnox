@@ -6,18 +6,23 @@ import androidx.lifecycle.viewModelScope
 import com.elegen.elegencashbook.core.money.Money
 import com.elegen.elegencashbook.domain.model.BusinessOverview
 import com.elegen.elegencashbook.domain.model.EntryType
+import com.elegen.elegencashbook.domain.model.HistoryEntityType
+import com.elegen.elegencashbook.domain.model.HistoryEntry
 import com.elegen.elegencashbook.domain.model.Transaction
 import com.elegen.elegencashbook.domain.usecase.AddTransaction
 import com.elegen.elegencashbook.domain.usecase.DeleteBook
 import com.elegen.elegencashbook.domain.usecase.DeleteTransaction
 import com.elegen.elegencashbook.domain.usecase.DuplicateBook
 import com.elegen.elegencashbook.domain.usecase.GetBalance
+import com.elegen.elegencashbook.domain.usecase.GetEntityHistory
 import com.elegen.elegencashbook.domain.usecase.ListMyBusinesses
 import com.elegen.elegencashbook.domain.usecase.MoveBook
 import com.elegen.elegencashbook.domain.usecase.ObserveBookEntries
 import com.elegen.elegencashbook.domain.usecase.RenameBook
 import com.elegen.elegencashbook.domain.usecase.RestoreBook
 import com.elegen.elegencashbook.domain.usecase.RestoreTransaction
+import com.elegen.elegencashbook.feature.history.HistoryItem
+import com.elegen.elegencashbook.feature.history.toHistoryItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -51,6 +56,8 @@ data class BookDetailsUiState(
     val entryCount: Int = 0,
     /** Move-book targets: businesses other than the one this book currently lives in. */
     val otherBusinesses: List<BusinessOption> = emptyList(),
+    /** Book-level changes only (rename/move/delete/restore/create) — not its entries', newest first. */
+    val historyItems: List<HistoryItem> = emptyList(),
 )
 
 sealed interface BookDetailsUiEvent {
@@ -76,6 +83,7 @@ class BookDetailsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     observeBookEntries: ObserveBookEntries,
     listMyBusinesses: ListMyBusinesses,
+    getEntityHistory: GetEntityHistory,
     private val getBalance: GetBalance,
     private val addTransaction: AddTransaction,
     private val deleteTransaction: DeleteTransaction,
@@ -93,11 +101,13 @@ class BookDetailsViewModel @Inject constructor(
 
     private val dateFmt = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     private val timeFmt = SimpleDateFormat("hh:mm a", Locale.getDefault())
+    private val historyDateFmt = SimpleDateFormat("d MMM yyyy, h:mm a", Locale.getDefault())
 
     val state: StateFlow<BookDetailsUiState> = combine(
         observeBookEntries(bookId),
         listMyBusinesses(),
-    ) { entries, businesses -> buildState(entries, businesses) }
+        getEntityHistory(HistoryEntityType.BOOK, bookId),
+    ) { entries, businesses, history -> buildState(entries, businesses, history) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BookDetailsUiState())
 
     fun onEvent(event: BookDetailsUiEvent) {
@@ -122,7 +132,7 @@ class BookDetailsViewModel @Inject constructor(
     }
 
     /** [entries] arrive chronological (oldest first) from the repository. */
-    private fun buildState(entries: List<Transaction>, businesses: List<BusinessOverview>): BookDetailsUiState {
+    private fun buildState(entries: List<Transaction>, businesses: List<BusinessOverview>, history: List<HistoryEntry>): BookDetailsUiState {
         val summary = getBalance(entries)
         var running = Money.ZERO
         val itemsChronological = entries.map { entry ->
@@ -149,6 +159,7 @@ class BookDetailsViewModel @Inject constructor(
             otherBusinesses = businesses
                 .filterNot { it.business.id == businessId }
                 .map { BusinessOption(it.business.id, it.business.name, it.bookCount) },
+            historyItems = history.map { it.toHistoryItem(historyDateFmt) },
         )
     }
 }

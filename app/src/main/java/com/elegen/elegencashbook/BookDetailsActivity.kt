@@ -29,6 +29,7 @@ import com.elegen.elegencashbook.feature.book.BookDetailsViewModel
 import com.elegen.elegencashbook.feature.book.EntryItem
 import com.elegen.elegencashbook.ui.DeleteConfirmDialog
 import com.elegen.elegencashbook.ui.EntryFormDialog
+import com.elegen.elegencashbook.ui.HistoryDialog
 import com.elegen.elegencashbook.ui.PickTargetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
@@ -179,6 +180,7 @@ class BookDetailsActivity : AppCompatActivity() {
             Toast.makeText(this, "Sharing books with members is coming soon", Toast.LENGTH_SHORT).show()
         }
         action(R.id.action_move) { promptMoveBook() }
+        action(R.id.action_history) { HistoryDialog.show(this, "\"${bookName()}\" Activity", uiState.historyItems) }
         action(R.id.action_delete) { confirmDeleteBook() }
 
         val xOffset = anchor.width - popupWidthPx

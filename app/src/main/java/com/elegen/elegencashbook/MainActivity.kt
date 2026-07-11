@@ -26,12 +26,16 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.elegen.elegencashbook.core.ui.setPrimaryEnabled
 import com.elegen.elegencashbook.data.remote.supabase.AuthDeepLinkHandler
+import com.elegen.elegencashbook.domain.model.HistoryEntityType
+import com.elegen.elegencashbook.domain.usecase.GetEntityHistory
+import com.elegen.elegencashbook.feature.history.toHistoryItem
 import com.elegen.elegencashbook.feature.main.BookItem
 import com.elegen.elegencashbook.feature.main.BusinessItem
 import com.elegen.elegencashbook.feature.main.MainUiEvent
 import com.elegen.elegencashbook.feature.main.MainUiState
 import com.elegen.elegencashbook.feature.main.MainViewModel
 import com.elegen.elegencashbook.ui.DeleteConfirmDialog
+import com.elegen.elegencashbook.ui.HistoryDialog
 import com.elegen.elegencashbook.ui.PickTargetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.button.MaterialButton
@@ -40,7 +44,10 @@ import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -49,6 +56,9 @@ class MainActivity : AppCompatActivity() {
     private val viewModel: MainViewModel by viewModels()
 
     @Inject lateinit var authDeepLinkHandler: AuthDeepLinkHandler
+    @Inject lateinit var getEntityHistory: GetEntityHistory
+
+    private val historyDateFmt = SimpleDateFormat("d MMM yyyy, h:mm a", Locale.getDefault())
 
     private lateinit var booksRecyclerView: RecyclerView
     private lateinit var booksAdapter: BookAdapter
@@ -375,6 +385,12 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Sharing books with members is coming soon", Toast.LENGTH_SHORT).show()
         }
         action(R.id.action_move) { promptMoveBook(book) }
+        action(R.id.action_history) {
+            lifecycleScope.launch {
+                val items = getEntityHistory(HistoryEntityType.BOOK, book.id).first().map { it.toHistoryItem(historyDateFmt) }
+                HistoryDialog.show(this@MainActivity, "\"${book.name}\" History", items)
+            }
+        }
         action(R.id.action_delete) { confirmDeleteBook(book) }
 
         val xOffset = anchor.width - popupWidthPx

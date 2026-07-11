@@ -3,12 +3,15 @@ package com.elegen.elegencashbook.data.remote.supabase
 import com.elegen.elegencashbook.core.logging.Logger
 import com.elegen.elegencashbook.data.local.dao.BookDao
 import com.elegen.elegencashbook.data.local.dao.BusinessDao
+import com.elegen.elegencashbook.data.local.dao.HistoryDao
 import com.elegen.elegencashbook.data.local.dao.TransactionDao
 import com.elegen.elegencashbook.data.local.entity.BookEntity
 import com.elegen.elegencashbook.data.local.entity.BusinessEntity
+import com.elegen.elegencashbook.data.local.entity.HistoryEntity
 import com.elegen.elegencashbook.data.local.entity.SyncEnvelope
 import com.elegen.elegencashbook.data.local.entity.TransactionEntity
 import com.elegen.elegencashbook.data.local.prefs.AppPreferences
+import com.elegen.elegencashbook.data.repository.buildChanges
 import com.elegen.elegencashbook.data.sync.ConflictResolver
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
@@ -19,6 +22,7 @@ import kotlinx.serialization.json.long
 import kotlinx.serialization.json.longOrNull
 import java.time.Instant
 import java.time.OffsetDateTime
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -36,6 +40,7 @@ class RemotePull @Inject constructor(
     private val businessDao: BusinessDao,
     private val bookDao: BookDao,
     private val transactionDao: TransactionDao,
+    private val historyDao: HistoryDao,
     private val prefs: AppPreferences,
     private val logger: Logger,
 ) {
@@ -54,20 +59,54 @@ class RemotePull @Inject constructor(
             val remoteUpdatedAt = parseTimestamp(row.str("updated_at"))
             val local = bookDao.getById(row.str("id"))
             if (winner(local?.sync, remoteUpdatedAt, row.strOrNull("device_id")) == ConflictResolver.Winner.REMOTE) {
-                bookDao.upsert(row.toBookEntity(remoteUpdatedAt))
+                val remote = row.toBookEntity(remoteUpdatedAt)
+                logOverwriteIfPendingLocal(HistoryEntity.TYPE_BOOK, remote.id, remote.id, local?.sync, local?.ownerUid.orEmpty()) {
+                    buildChanges(Triple("name", local?.name, remote.name), Triple("businessId", local?.businessId, remote.businessId))
+                }
+                bookDao.upsert(remote)
             }
         }
         pullTable(TYPE_TRANSACTION, "transactions") { row ->
             val remoteUpdatedAt = parseTimestamp(row.str("updated_at"))
             val local = transactionDao.getById(row.str("id"))
             if (winner(local?.sync, remoteUpdatedAt, row.strOrNull("device_id")) == ConflictResolver.Winner.REMOTE) {
-                transactionDao.upsert(row.toTransactionEntity(remoteUpdatedAt))
+                val remote = row.toTransactionEntity(remoteUpdatedAt)
+                logOverwriteIfPendingLocal(HistoryEntity.TYPE_TRANSACTION, remote.id, remote.bookId, local?.sync, local?.createdByUid.orEmpty()) {
+                    buildChanges(
+                        Triple("amountPaisa", local?.amountPaisa, remote.amountPaisa),
+                        Triple("description", local?.description, remote.description),
+                        Triple("bookId", local?.bookId, remote.bookId),
+                    )
+                }
+                transactionDao.upsert(remote)
             }
         }
     }
 
     private fun winner(local: SyncEnvelope?, remoteUpdatedAt: Long, remoteDeviceId: String?) =
         ConflictResolver.resolve(local?.updatedAt, local?.deviceId, remoteUpdatedAt, remoteDeviceId)
+
+    /**
+     * A remote-wins pull only means "genuine conflict, your edit got clobbered" when the local row
+     * had an un-pushed edit sitting in it (PENDING) — remote catching up over an already-SYNCED
+     * local row is normal replication, not something to surface to the user.
+     */
+    private suspend fun logOverwriteIfPendingLocal(entityType: String, entityId: String, bookId: String, localSync: SyncEnvelope?, actorUid: String, changes: () -> String?) {
+        if (localSync?.syncState != SyncEnvelope.STATE_PENDING) return
+        historyDao.insert(
+            HistoryEntity(
+                id = UUID.randomUUID().toString(),
+                entityType = entityType,
+                entityId = entityId,
+                bookId = bookId,
+                action = HistoryEntity.ACTION_CONFLICT_OVERWRITTEN,
+                changes = changes(),
+                actorUid = actorUid,
+                deviceId = localSync.deviceId,
+                at = System.currentTimeMillis(),
+            )
+        )
+    }
 
     private suspend fun pullTable(type: String, table: String, apply: suspend (JsonObject) -> Unit) {
         val client = holder.client ?: return

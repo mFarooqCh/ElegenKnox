@@ -76,7 +76,7 @@ class BookRepositoryImplTest {
     private fun outbox() = OutboxWriter(db, db.syncQueueDao(), NoopScheduler)
 
     private fun repo(identityUid: String = "u1", transactionDao: TransactionDao = db.transactionDao()) =
-        BookRepositoryImpl(db, db.bookDao(), transactionDao, prefs, FakeIdentity(identityUid), outbox())
+        BookRepositoryImpl(db, db.bookDao(), transactionDao, db.historyDao(), prefs, FakeIdentity(identityUid), outbox())
 
     private suspend fun seedBusinessAndBook(owner: String = "u1") {
         db.businessDao().upsert(BusinessEntity("biz", "Biz", owner, "PKR", 1L, envelope()))

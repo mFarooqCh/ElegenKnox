@@ -8,9 +8,12 @@ import com.elegen.elegencashbook.domain.model.BookWithBalance
 import com.elegen.elegencashbook.domain.model.Business
 import com.elegen.elegencashbook.domain.model.BusinessOverview
 import com.elegen.elegencashbook.domain.model.EntryType
+import com.elegen.elegencashbook.domain.model.HistoryEntityType
+import com.elegen.elegencashbook.domain.model.HistoryEntry
 import com.elegen.elegencashbook.domain.model.Transaction
 import com.elegen.elegencashbook.domain.repository.BookRepository
 import com.elegen.elegencashbook.domain.repository.BusinessRepository
+import com.elegen.elegencashbook.domain.repository.HistoryRepository
 import com.elegen.elegencashbook.domain.repository.SettingsRepository
 import com.elegen.elegencashbook.domain.repository.TransactionRepository
 import kotlinx.coroutines.flow.Flow
@@ -127,6 +130,12 @@ class MoveTransaction @Inject constructor(private val repo: TransactionRepositor
 class CopyTransaction @Inject constructor(private val repo: TransactionRepository) {
     suspend operator fun invoke(id: String, targetBookId: String): Transaction = repo.copyTo(id, targetBookId)
 }
+
+class GetEntityHistory @Inject constructor(private val repo: HistoryRepository) {
+    operator fun invoke(entityType: HistoryEntityType, entityId: String): Flow<List<HistoryEntry>> =
+        repo.observeForEntity(entityType, entityId)
+}
+
 
 /** Balance math — exact Money arithmetic; overflow throws (constitution §4). */
 class GetBalance @Inject constructor() {

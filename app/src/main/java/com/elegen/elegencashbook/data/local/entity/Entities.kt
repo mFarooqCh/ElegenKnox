@@ -115,3 +115,40 @@ data class SyncQueueEntity(
         const val STATE_DEAD_LETTER = "DEAD_LETTER"
     }
 }
+
+/**
+ * Append-only edit-history trail (edit-history feature). One row per mutation on a book or
+ * transaction — never updated or hard-deleted itself, so no envelope/version needed. [bookId] is
+ * the entity's own id for BOOK rows, or the parent book for TRANSACTION rows — lets the book's
+ * "Activity" view query its own history plus every entry's history in one indexed query.
+ */
+@Entity(
+    tableName = "history_log",
+    indices = [Index("entityType", "entityId", "at"), Index("bookId", "at")],
+)
+data class HistoryEntity(
+    @PrimaryKey val id: String,
+    val entityType: String,
+    val entityId: String,
+    val bookId: String,
+    val action: String,
+    /** "field=old→new;field2=old2→new2" — plain delimited diff, null for CREATED/DELETED/RESTORED. */
+    val changes: String?,
+    val actorUid: String,
+    val deviceId: String,
+    val at: Long,
+) {
+    companion object {
+        const val TYPE_BOOK = "BOOK"
+        const val TYPE_TRANSACTION = "TRANSACTION"
+
+        const val ACTION_CREATED = "CREATED"
+        const val ACTION_UPDATED = "UPDATED"
+        const val ACTION_RENAMED = "RENAMED"
+        const val ACTION_MOVED = "MOVED"
+        const val ACTION_COPIED = "COPIED"
+        const val ACTION_DELETED = "DELETED"
+        const val ACTION_RESTORED = "RESTORED"
+        const val ACTION_CONFLICT_OVERWRITTEN = "CONFLICT_OVERWRITTEN"
+    }
+}

@@ -6,13 +6,18 @@ import androidx.lifecycle.viewModelScope
 import com.elegen.elegencashbook.core.money.Money
 import com.elegen.elegencashbook.domain.model.BookWithBalance
 import com.elegen.elegencashbook.domain.model.EntryType
+import com.elegen.elegencashbook.domain.model.HistoryEntityType
+import com.elegen.elegencashbook.domain.model.HistoryEntry
 import com.elegen.elegencashbook.domain.model.Transaction
 import com.elegen.elegencashbook.domain.usecase.CopyTransaction
 import com.elegen.elegencashbook.domain.usecase.DeleteTransaction
+import com.elegen.elegencashbook.domain.usecase.GetEntityHistory
 import com.elegen.elegencashbook.domain.usecase.ListBooks
 import com.elegen.elegencashbook.domain.usecase.MoveTransaction
 import com.elegen.elegencashbook.domain.usecase.ObserveTransaction
 import com.elegen.elegencashbook.domain.usecase.UpdateTransaction
+import com.elegen.elegencashbook.feature.history.HistoryItem
+import com.elegen.elegencashbook.feature.history.toHistoryItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -39,6 +44,8 @@ data class EntryDetailsUiState(
     val createdLabelText: String = "",
     /** Other books in the same business — move/copy targets. */
     val otherBooks: List<BookOption> = emptyList(),
+    /** This entry's own edit history, newest first. */
+    val historyItems: List<HistoryItem> = emptyList(),
 )
 
 sealed interface EntryDetailsUiEvent {
@@ -53,6 +60,7 @@ class EntryDetailsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     observeTransaction: ObserveTransaction,
     listBooks: ListBooks,
+    getEntityHistory: GetEntityHistory,
     private val updateTransaction: UpdateTransaction,
     private val deleteTransaction: DeleteTransaction,
     private val moveTransaction: MoveTransaction,
@@ -64,14 +72,16 @@ class EntryDetailsViewModel @Inject constructor(
 
     private val dateFmt = SimpleDateFormat("d MMM yyyy", Locale.getDefault())
     private val timeFmt = SimpleDateFormat("h:mm a", Locale.getDefault())
+    private val historyDateFmt = SimpleDateFormat("d MMM yyyy, h:mm a", Locale.getDefault())
 
     val state: StateFlow<EntryDetailsUiState> = combine(
         observeTransaction(entryId),
         businessId?.let { listBooks(it) } ?: flowOf(emptyList()),
-    ) { transaction, books -> buildState(transaction, books) }
+        getEntityHistory(HistoryEntityType.TRANSACTION, entryId),
+    ) { transaction, books, history -> buildState(transaction, books, history) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EntryDetailsUiState())
 
-    private fun buildState(transaction: Transaction?, books: List<BookWithBalance>): EntryDetailsUiState {
+    private fun buildState(transaction: Transaction?, books: List<BookWithBalance>, history: List<HistoryEntry>): EntryDetailsUiState {
         if (transaction == null) return EntryDetailsUiState(exists = false)
         return EntryDetailsUiState(
             exists = true,
@@ -86,6 +96,7 @@ class EntryDetailsViewModel @Inject constructor(
             otherBooks = books
                 .filterNot { it.book.id == transaction.bookId }
                 .map { BookOption(it.book.id, it.book.name, it.entryCount) },
+            historyItems = history.map { it.toHistoryItem(historyDateFmt) },
         )
     }
 

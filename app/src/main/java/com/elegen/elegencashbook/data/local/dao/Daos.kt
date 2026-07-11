@@ -8,6 +8,7 @@ import androidx.room.Query
 import androidx.room.Upsert
 import com.elegen.elegencashbook.data.local.entity.BookEntity
 import com.elegen.elegencashbook.data.local.entity.BusinessEntity
+import com.elegen.elegencashbook.data.local.entity.HistoryEntity
 import com.elegen.elegencashbook.data.local.entity.SyncQueueEntity
 import com.elegen.elegencashbook.data.local.entity.TransactionEntity
 import kotlinx.coroutines.flow.Flow
@@ -164,4 +165,13 @@ interface SyncQueueDao {
 
     @Query("SELECT COUNT(*) FROM sync_queue WHERE status = :status")
     suspend fun countByStatus(status: String): Int
+}
+
+@Dao
+interface HistoryDao {
+    @Insert
+    suspend fun insert(row: HistoryEntity)
+
+    @Query("SELECT * FROM history_log WHERE entityType = :entityType AND entityId = :entityId ORDER BY at DESC")
+    fun observeForEntity(entityType: String, entityId: String): Flow<List<HistoryEntity>>
 }
