@@ -117,6 +117,66 @@ data class SyncQueueEntity(
 }
 
 /**
+ * Local mirror of Postgres `business_members` (P6, spec §8.5). Pull-only — client never writes
+ * this table directly; all writes go through the SECURITY DEFINER RPCs (invite_to_business,
+ * update_member_role, revoke_member), so there's no local-edit/conflict path and no envelope
+ * (version/deviceId/syncState) needed, just the pull cursor's own `updatedAt`.
+ */
+@Entity(
+    tableName = "business_members",
+    indices = [Index("businessId"), Index("userUid")],
+)
+data class BusinessMemberEntity(
+    @PrimaryKey val id: String,
+    val businessId: String,
+    val userUid: String,
+    val role: String,
+    val status: String,
+    /** True = this admin is restricted to an allow-list of books (spec §8.3 adminIsScoped). */
+    val bookScoped: Boolean,
+    val invitedByUid: String?,
+    val joinedAt: Long,
+    val updatedAt: Long,
+) {
+    companion object {
+        const val ROLE_OWNER = "OWNER"
+        const val ROLE_ADMIN = "ADMIN"
+        const val ROLE_VIEWER = "VIEWER"
+
+        const val STATUS_ACTIVE = "ACTIVE"
+        const val STATUS_REVOKED = "REVOKED"
+    }
+}
+
+/**
+ * Local mirror of Postgres `book_grants` (P6, spec §8.5). Pull-only, same reasoning as
+ * [BusinessMemberEntity] — writes go through share_book/set_book_grant/revoke_book_grant RPCs.
+ * `deletedAt` here IS meaningful (unlike BusinessMemberEntity's status-only revoke): revoke is a
+ * tombstone, not a hard delete, so a revoked grant still round-trips through delta pull.
+ */
+@Entity(
+    tableName = "book_grants",
+    indices = [Index("bookId"), Index("userUid")],
+)
+data class BookGrantEntity(
+    @PrimaryKey val id: String,
+    val bookId: String,
+    val userUid: String,
+    val access: String,
+    /** JSON array of Permission names; null = inherit business-role default (spec §8.3). */
+    val permsOverride: String?,
+    val grantedByUid: String?,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val deletedAt: Long?,
+) {
+    companion object {
+        const val ACCESS_ALLOW = "ALLOW"
+        const val ACCESS_DENY = "DENY"
+    }
+}
+
+/**
  * Append-only edit-history trail (edit-history feature). One row per mutation on a book or
  * transaction — never updated or hard-deleted itself, so no envelope/version needed. [bookId] is
  * the entity's own id for BOOK rows, or the parent book for TRANSACTION rows — lets the book's

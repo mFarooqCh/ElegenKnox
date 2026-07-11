@@ -14,7 +14,9 @@ import com.elegen.elegencashbook.data.repository.LocalDataMaintenanceImpl
 import com.elegen.elegencashbook.domain.repository.AuthRepository
 import com.elegen.elegencashbook.domain.repository.LocalDataMaintenance
 import com.elegen.elegencashbook.data.local.dao.BookDao
+import com.elegen.elegencashbook.data.local.dao.BookGrantDao
 import com.elegen.elegencashbook.data.local.dao.BusinessDao
+import com.elegen.elegencashbook.data.local.dao.BusinessMemberDao
 import com.elegen.elegencashbook.data.local.dao.HistoryDao
 import com.elegen.elegencashbook.data.local.dao.SyncQueueDao
 import com.elegen.elegencashbook.data.local.dao.TransactionDao
@@ -22,6 +24,7 @@ import com.elegen.elegencashbook.data.local.db.AppDatabase
 import com.elegen.elegencashbook.data.local.db.MIGRATION_1_2
 import com.elegen.elegencashbook.data.local.db.MIGRATION_2_3
 import com.elegen.elegencashbook.data.local.db.MIGRATION_3_4
+import com.elegen.elegencashbook.data.local.db.MIGRATION_4_5
 import com.elegen.elegencashbook.data.repository.BookRepositoryImpl
 import com.elegen.elegencashbook.data.repository.BusinessRepositoryImpl
 import com.elegen.elegencashbook.data.repository.HistoryRepositoryImpl
@@ -63,7 +66,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
         Room.databaseBuilder(context, AppDatabase::class.java, "elegen.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .build()
 
     @Provides fun provideBusinessDao(db: AppDatabase): BusinessDao = db.businessDao()
@@ -71,6 +74,8 @@ object DatabaseModule {
     @Provides fun provideTransactionDao(db: AppDatabase): TransactionDao = db.transactionDao()
     @Provides fun provideSyncQueueDao(db: AppDatabase): SyncQueueDao = db.syncQueueDao()
     @Provides fun provideHistoryDao(db: AppDatabase): HistoryDao = db.historyDao()
+    @Provides fun provideBusinessMemberDao(db: AppDatabase): BusinessMemberDao = db.businessMemberDao()
+    @Provides fun provideBookGrantDao(db: AppDatabase): BookGrantDao = db.bookGrantDao()
 }
 
 @Module

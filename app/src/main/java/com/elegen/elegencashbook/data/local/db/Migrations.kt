@@ -69,3 +69,31 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_history_log_bookId_at` ON `history_log` (`bookId`, `at`)")
     }
 }
+
+/**
+ * v4 → v5 (P6): local mirrors of Postgres `business_members` / `book_grants`. Pull-only tables —
+ * see [BusinessMemberEntity] / [BookGrantEntity] — so no outbox backfill needed, unlike P4's
+ * MIGRATION_2_3 (nothing local ever originates a row here; the first pull after upgrade populates
+ * both from scratch).
+ */
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `business_members` (" +
+                "`id` TEXT NOT NULL PRIMARY KEY, `businessId` TEXT NOT NULL, `userUid` TEXT NOT NULL, " +
+                "`role` TEXT NOT NULL, `status` TEXT NOT NULL, `bookScoped` INTEGER NOT NULL, " +
+                "`invitedByUid` TEXT, `joinedAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL)"
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_business_members_businessId` ON `business_members` (`businessId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_business_members_userUid` ON `business_members` (`userUid`)")
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `book_grants` (" +
+                "`id` TEXT NOT NULL PRIMARY KEY, `bookId` TEXT NOT NULL, `userUid` TEXT NOT NULL, " +
+                "`access` TEXT NOT NULL, `permsOverride` TEXT, `grantedByUid` TEXT, " +
+                "`createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER)"
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_book_grants_bookId` ON `book_grants` (`bookId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_book_grants_userUid` ON `book_grants` (`userUid`)")
+    }
+}

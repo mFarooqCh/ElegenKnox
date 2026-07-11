@@ -78,7 +78,7 @@ UI (Activity) → ViewModel (StateFlow<UiState>/onEvent) → UseCase → Reposit
 
 ## Current state (see handoff_notes.md for full detail)
 
-P0–P4 done. **P5 (pull sync + conflicts) code done, on-device proof gate not yet run** — `RemotePull`, `ConflictResolver` (pure LWW, 7 unit tests), `SyncPullWorker`, `CleanupWorker` in place; not yet verified two-device.
+P0–P5 done, proof gates passed. `RemotePull`, `ConflictResolver` (pure LWW, 7 unit tests), `SyncPullWorker`, `CleanupWorker` in place; two-device proof gate verified 2026-07-12 (add/delete propagation, LWW conflict winner match, uninstall/reinstall/login restore, P0–P4 regression green).
 
 ## Testing / gates
 

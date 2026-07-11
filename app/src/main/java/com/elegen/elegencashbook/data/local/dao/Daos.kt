@@ -7,7 +7,9 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Upsert
 import com.elegen.elegencashbook.data.local.entity.BookEntity
+import com.elegen.elegencashbook.data.local.entity.BookGrantEntity
 import com.elegen.elegencashbook.data.local.entity.BusinessEntity
+import com.elegen.elegencashbook.data.local.entity.BusinessMemberEntity
 import com.elegen.elegencashbook.data.local.entity.HistoryEntity
 import com.elegen.elegencashbook.data.local.entity.SyncQueueEntity
 import com.elegen.elegencashbook.data.local.entity.TransactionEntity
@@ -174,4 +176,30 @@ interface HistoryDao {
 
     @Query("SELECT * FROM history_log WHERE entityType = :entityType AND entityId = :entityId ORDER BY at DESC")
     fun observeForEntity(entityType: String, entityId: String): Flow<List<HistoryEntity>>
+}
+
+@Dao
+interface BusinessMemberDao {
+    @Upsert
+    suspend fun upsert(entity: BusinessMemberEntity)
+
+    /** Caller's own ACTIVE membership row for a business, or null if not a member (VIEWER included). */
+    @Query("SELECT * FROM business_members WHERE businessId = :businessId AND userUid = :userUid AND status = 'ACTIVE'")
+    suspend fun getActiveMembership(businessId: String, userUid: String): BusinessMemberEntity?
+
+    @Query("SELECT * FROM business_members WHERE businessId = :businessId AND status = 'ACTIVE'")
+    fun observeActiveMembers(businessId: String): Flow<List<BusinessMemberEntity>>
+}
+
+@Dao
+interface BookGrantDao {
+    @Upsert
+    suspend fun upsert(entity: BookGrantEntity)
+
+    /** Caller's own live (non-tombstoned) grant for a book, or null if ungranted. */
+    @Query("SELECT * FROM book_grants WHERE bookId = :bookId AND userUid = :userUid AND deletedAt IS NULL")
+    suspend fun getActiveGrant(bookId: String, userUid: String): BookGrantEntity?
+
+    @Query("SELECT * FROM book_grants WHERE bookId = :bookId AND deletedAt IS NULL")
+    fun observeActiveGrants(bookId: String): Flow<List<BookGrantEntity>>
 }
