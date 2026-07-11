@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.elegen.elegencashbook.core.money.Money
+import com.elegen.elegencashbook.core.permission.Permission
 import com.elegen.elegencashbook.domain.model.BusinessOverview
 import com.elegen.elegencashbook.domain.model.EntryType
 import com.elegen.elegencashbook.domain.model.HistoryEntityType
@@ -14,6 +15,7 @@ import com.elegen.elegencashbook.domain.usecase.DeleteBook
 import com.elegen.elegencashbook.domain.usecase.DeleteTransaction
 import com.elegen.elegencashbook.domain.usecase.DuplicateBook
 import com.elegen.elegencashbook.domain.usecase.GetBalance
+import com.elegen.elegencashbook.domain.usecase.GetEffectivePermissions
 import com.elegen.elegencashbook.domain.usecase.GetEntityHistory
 import com.elegen.elegencashbook.domain.usecase.ListMyBusinesses
 import com.elegen.elegencashbook.domain.usecase.MoveBook
@@ -58,6 +60,12 @@ data class BookDetailsUiState(
     val otherBusinesses: List<BusinessOption> = emptyList(),
     /** Book-level changes only (rename/move/delete/restore/create) — not its entries', newest first. */
     val historyItems: List<HistoryItem> = emptyList(),
+    /**
+     * UX-gating only (spec §8.3) — no button wiring yet (P6 is backend-only, sharing UI is P7),
+     * so this has no visible effect: an owner's set is always everything. Real enforcement is
+     * server-side (RLS + Postgres triggers), never this cached copy.
+     */
+    val permissions: Set<Permission> = Permission.entries.toSet(),
 )
 
 sealed interface BookDetailsUiEvent {
@@ -84,6 +92,7 @@ class BookDetailsViewModel @Inject constructor(
     observeBookEntries: ObserveBookEntries,
     listMyBusinesses: ListMyBusinesses,
     getEntityHistory: GetEntityHistory,
+    getEffectivePermissions: GetEffectivePermissions,
     private val getBalance: GetBalance,
     private val addTransaction: AddTransaction,
     private val deleteTransaction: DeleteTransaction,
@@ -107,7 +116,8 @@ class BookDetailsViewModel @Inject constructor(
         observeBookEntries(bookId),
         listMyBusinesses(),
         getEntityHistory(HistoryEntityType.BOOK, bookId),
-    ) { entries, businesses, history -> buildState(entries, businesses, history) }
+        getEffectivePermissions(bookId),
+    ) { entries, businesses, history, permissions -> buildState(entries, businesses, history, permissions) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BookDetailsUiState())
 
     fun onEvent(event: BookDetailsUiEvent) {
@@ -132,7 +142,12 @@ class BookDetailsViewModel @Inject constructor(
     }
 
     /** [entries] arrive chronological (oldest first) from the repository. */
-    private fun buildState(entries: List<Transaction>, businesses: List<BusinessOverview>, history: List<HistoryEntry>): BookDetailsUiState {
+    private fun buildState(
+        entries: List<Transaction>,
+        businesses: List<BusinessOverview>,
+        history: List<HistoryEntry>,
+        permissions: Set<Permission>,
+    ): BookDetailsUiState {
         val summary = getBalance(entries)
         var running = Money.ZERO
         val itemsChronological = entries.map { entry ->
@@ -160,6 +175,7 @@ class BookDetailsViewModel @Inject constructor(
                 .filterNot { it.business.id == businessId }
                 .map { BusinessOption(it.business.id, it.business.name, it.bookCount) },
             historyItems = history.map { it.toHistoryItem(historyDateFmt) },
+            permissions = permissions,
         )
     }
 }

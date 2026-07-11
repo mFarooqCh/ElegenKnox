@@ -2,11 +2,15 @@ package com.elegen.elegencashbook.data.remote.supabase
 
 import com.elegen.elegencashbook.core.logging.Logger
 import com.elegen.elegencashbook.data.local.dao.BookDao
+import com.elegen.elegencashbook.data.local.dao.BookGrantDao
 import com.elegen.elegencashbook.data.local.dao.BusinessDao
+import com.elegen.elegencashbook.data.local.dao.BusinessMemberDao
 import com.elegen.elegencashbook.data.local.dao.HistoryDao
 import com.elegen.elegencashbook.data.local.dao.TransactionDao
 import com.elegen.elegencashbook.data.local.entity.BookEntity
+import com.elegen.elegencashbook.data.local.entity.BookGrantEntity
 import com.elegen.elegencashbook.data.local.entity.BusinessEntity
+import com.elegen.elegencashbook.data.local.entity.BusinessMemberEntity
 import com.elegen.elegencashbook.data.local.entity.HistoryEntity
 import com.elegen.elegencashbook.data.local.entity.SyncEnvelope
 import com.elegen.elegencashbook.data.local.entity.TransactionEntity
@@ -15,7 +19,9 @@ import com.elegen.elegencashbook.data.repository.buildChanges
 import com.elegen.elegencashbook.data.sync.ConflictResolver
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
@@ -41,6 +47,8 @@ class RemotePull @Inject constructor(
     private val bookDao: BookDao,
     private val transactionDao: TransactionDao,
     private val historyDao: HistoryDao,
+    private val businessMemberDao: BusinessMemberDao,
+    private val bookGrantDao: BookGrantDao,
     private val prefs: AppPreferences,
     private val logger: Logger,
 ) {
@@ -80,6 +88,13 @@ class RemotePull @Inject constructor(
                 }
                 transactionDao.upsert(remote)
             }
+        }
+        // Server-authoritative, client never writes these rows (RPC-only) — plain upsert, no LWW.
+        pullTable(TYPE_BUSINESS_MEMBER, "business_members") { row ->
+            businessMemberDao.upsert(row.toBusinessMemberEntity(parseTimestamp(row.str("updated_at"))))
+        }
+        pullTable(TYPE_BOOK_GRANT, "book_grants") { row ->
+            bookGrantDao.upsert(row.toBookGrantEntity(parseTimestamp(row.str("updated_at"))))
         }
     }
 
@@ -129,6 +144,8 @@ class RemotePull @Inject constructor(
         const val TYPE_BUSINESS = "BUSINESS_PULL"
         const val TYPE_BOOK = "BOOK_PULL"
         const val TYPE_TRANSACTION = "TRANSACTION_PULL"
+        const val TYPE_BUSINESS_MEMBER = "BUSINESS_MEMBER_PULL"
+        const val TYPE_BOOK_GRANT = "BOOK_GRANT_PULL"
     }
 }
 
@@ -139,6 +156,9 @@ private fun JsonObject.str(key: String): String = getValue(key).jsonPrimitive.co
 private fun JsonObject.strOrNull(key: String): String? = get(key)?.jsonPrimitive?.contentOrNull
 private fun JsonObject.long(key: String): Long = getValue(key).jsonPrimitive.long
 private fun JsonObject.longOrNull(key: String): Long? = get(key)?.jsonPrimitive?.longOrNull
+private fun JsonObject.bool(key: String): Boolean = getValue(key).jsonPrimitive.boolean
+/** jsonb columns arrive already parsed as a JsonElement — re-serialize to text for Room's TEXT column. */
+private fun JsonObject.rawJsonOrNull(key: String): String? = get(key)?.takeUnless { it is JsonNull }?.toString()
 
 private fun JsonObject.toBusinessEntity(updatedAt: Long) = BusinessEntity(
     id = str("id"),
@@ -187,4 +207,28 @@ private fun JsonObject.toTransactionEntity(updatedAt: Long) = TransactionEntity(
         deletedAt = longOrNull("deleted_at"),
         syncState = SyncEnvelope.STATE_SYNCED,
     ),
+)
+
+private fun JsonObject.toBusinessMemberEntity(updatedAt: Long) = BusinessMemberEntity(
+    id = str("id"),
+    businessId = str("business_id"),
+    userUid = str("user_uid"),
+    role = str("role"),
+    status = str("status"),
+    bookScoped = bool("book_scoped"),
+    invitedByUid = strOrNull("invited_by_uid"),
+    joinedAt = parseTimestamp(str("joined_at")),
+    updatedAt = updatedAt,
+)
+
+private fun JsonObject.toBookGrantEntity(updatedAt: Long) = BookGrantEntity(
+    id = str("id"),
+    bookId = str("book_id"),
+    userUid = str("user_uid"),
+    access = str("access"),
+    permsOverride = rawJsonOrNull("perms_override"),
+    grantedByUid = strOrNull("granted_by_uid"),
+    createdAt = parseTimestamp(str("created_at")),
+    updatedAt = updatedAt,
+    deletedAt = longOrNull("deleted_at"),
 )

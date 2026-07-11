@@ -2,6 +2,7 @@ package com.elegen.elegencashbook.domain.usecase
 
 import com.elegen.elegencashbook.core.money.Money
 import com.elegen.elegencashbook.core.money.sum
+import com.elegen.elegencashbook.core.permission.Permission
 import com.elegen.elegencashbook.domain.model.BalanceSummary
 import com.elegen.elegencashbook.domain.model.Book
 import com.elegen.elegencashbook.domain.model.BookWithBalance
@@ -14,6 +15,7 @@ import com.elegen.elegencashbook.domain.model.Transaction
 import com.elegen.elegencashbook.domain.repository.BookRepository
 import com.elegen.elegencashbook.domain.repository.BusinessRepository
 import com.elegen.elegencashbook.domain.repository.HistoryRepository
+import com.elegen.elegencashbook.domain.repository.PermissionRepository
 import com.elegen.elegencashbook.domain.repository.SettingsRepository
 import com.elegen.elegencashbook.domain.repository.TransactionRepository
 import kotlinx.coroutines.flow.Flow
@@ -134,6 +136,11 @@ class CopyTransaction @Inject constructor(private val repo: TransactionRepositor
 class GetEntityHistory @Inject constructor(private val repo: HistoryRepository) {
     operator fun invoke(entityType: HistoryEntityType, entityId: String): Flow<List<HistoryEntry>> =
         repo.observeForEntity(entityType, entityId)
+}
+
+/** UX-gating only (spec §8.3) — never the security boundary; RLS + Postgres triggers enforce writes. */
+class GetEffectivePermissions @Inject constructor(private val repo: PermissionRepository) {
+    operator fun invoke(bookId: String): Flow<Set<Permission>> = repo.observeEffectivePermissions(bookId)
 }
 
 

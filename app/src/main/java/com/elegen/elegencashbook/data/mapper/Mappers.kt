@@ -1,10 +1,17 @@
 package com.elegen.elegencashbook.data.mapper
 
 import com.elegen.elegencashbook.core.money.Money
+import com.elegen.elegencashbook.core.permission.BusinessRole
+import com.elegen.elegencashbook.core.permission.GrantAccess
+import com.elegen.elegencashbook.core.permission.Permission
+import com.elegen.elegencashbook.core.permission.PermissionGrant
+import com.elegen.elegencashbook.core.permission.PermissionMembership
 import com.elegen.elegencashbook.data.local.dao.BookWithBalanceRow
 import com.elegen.elegencashbook.data.local.dao.BusinessWithCountRow
 import com.elegen.elegencashbook.data.local.entity.BookEntity
+import com.elegen.elegencashbook.data.local.entity.BookGrantEntity
 import com.elegen.elegencashbook.data.local.entity.BusinessEntity
+import com.elegen.elegencashbook.data.local.entity.BusinessMemberEntity
 import com.elegen.elegencashbook.data.local.entity.HistoryEntity
 import com.elegen.elegencashbook.data.local.entity.TransactionEntity
 import com.elegen.elegencashbook.domain.model.Book
@@ -16,6 +23,7 @@ import com.elegen.elegencashbook.domain.model.HistoryAction
 import com.elegen.elegencashbook.domain.model.HistoryEntityType
 import com.elegen.elegencashbook.domain.model.HistoryEntry
 import com.elegen.elegencashbook.domain.model.Transaction
+import kotlinx.serialization.json.Json
 
 /** Entity ⇄ domain mappers (spec §4 rules 2–3). Envelope internals stay in data/. */
 
@@ -68,4 +76,18 @@ fun HistoryEntity.toDomain() = HistoryEntry(
     changes = changes,
     actorUid = actorUid,
     at = at,
+)
+
+fun BusinessMemberEntity.toPermissionMembership() = PermissionMembership(
+    role = BusinessRole.valueOf(role),
+    bookScoped = bookScoped,
+)
+
+fun BookGrantEntity.toPermissionGrant() = PermissionGrant(
+    access = GrantAccess.valueOf(access),
+    permsOverride = permsOverride?.let { json ->
+        Json.decodeFromString<List<String>>(json).mapNotNull { name ->
+            runCatching { Permission.valueOf(name) }.getOrNull()
+        }.toSet()
+    },
 )

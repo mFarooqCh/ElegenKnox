@@ -90,6 +90,10 @@ interface BookDao {
     @Query("SELECT * FROM books WHERE id = :id")
     suspend fun getById(id: String): BookEntity?
 
+    /** Reactive single-book lookup — permission resolution needs to react to businessId/ownerUid pulls. */
+    @Query("SELECT * FROM books WHERE id = :id")
+    fun observeById(id: String): Flow<BookEntity?>
+
     @Query("UPDATE books SET ownerUid = :uid, updatedAt = :now, syncState = 'PENDING' WHERE ownerUid = :guest")
     suspend fun claimOwner(guest: String, uid: String, now: Long)
 

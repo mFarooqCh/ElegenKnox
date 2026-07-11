@@ -28,12 +28,14 @@ import com.elegen.elegencashbook.data.local.db.MIGRATION_4_5
 import com.elegen.elegencashbook.data.repository.BookRepositoryImpl
 import com.elegen.elegencashbook.data.repository.BusinessRepositoryImpl
 import com.elegen.elegencashbook.data.repository.HistoryRepositoryImpl
+import com.elegen.elegencashbook.data.repository.PermissionRepositoryImpl
 import com.elegen.elegencashbook.data.repository.SettingsRepositoryImpl
 import com.elegen.elegencashbook.data.repository.TransactionRepositoryImpl
 import com.elegen.elegencashbook.data.sync.WorkManagerSyncScheduler
 import com.elegen.elegencashbook.domain.repository.BookRepository
 import com.elegen.elegencashbook.domain.repository.BusinessRepository
 import com.elegen.elegencashbook.domain.repository.HistoryRepository
+import com.elegen.elegencashbook.domain.repository.PermissionRepository
 import com.elegen.elegencashbook.domain.repository.SettingsRepository
 import com.elegen.elegencashbook.domain.repository.SyncScheduler
 import com.elegen.elegencashbook.domain.repository.TransactionRepository
@@ -114,4 +116,7 @@ abstract class BindingsModule {
 
     @Binds @Singleton
     abstract fun bindHistoryRepository(impl: HistoryRepositoryImpl): HistoryRepository
+
+    @Binds @Singleton
+    abstract fun bindPermissionRepository(impl: PermissionRepositoryImpl): PermissionRepository
 }

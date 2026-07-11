@@ -1,6 +1,7 @@
 package com.elegen.elegencashbook.domain.repository
 
 import com.elegen.elegencashbook.core.money.Money
+import com.elegen.elegencashbook.core.permission.Permission
 import com.elegen.elegencashbook.domain.model.Book
 import com.elegen.elegencashbook.domain.model.BookWithBalance
 import com.elegen.elegencashbook.domain.model.Business
@@ -58,6 +59,16 @@ interface TransactionRepository {
 /** Read-only edit-history trail (edit-history feature). Writes are internal to Book/TransactionRepositoryImpl — they already own the mutation's transaction boundary. */
 interface HistoryRepository {
     fun observeForEntity(entityType: HistoryEntityType, entityId: String): Flow<List<HistoryEntry>>
+}
+
+/**
+ * Read-only UX permission cache (P6, spec §8.3). Writes to business_members/book_grants are
+ * RPC-only (data/remote), never through this interface — this only resolves the caller's own
+ * effective capability set on a book, for enabling/disabling buttons. Never trust this for
+ * security; RLS + the Postgres enforce triggers are the real gate.
+ */
+interface PermissionRepository {
+    fun observeEffectivePermissions(bookId: String): Flow<Set<Permission>>
 }
 
 interface SettingsRepository {

@@ -1,8 +1,13 @@
 package com.elegen.elegencashbook.data.repository
 
 import com.elegen.elegencashbook.core.money.Money
+import com.elegen.elegencashbook.core.permission.Permission
+import com.elegen.elegencashbook.core.permission.PermissionBook
+import com.elegen.elegencashbook.core.permission.PermissionResolver
 import com.elegen.elegencashbook.data.local.dao.BookDao
+import com.elegen.elegencashbook.data.local.dao.BookGrantDao
 import com.elegen.elegencashbook.data.local.dao.BusinessDao
+import com.elegen.elegencashbook.data.local.dao.BusinessMemberDao
 import com.elegen.elegencashbook.data.local.dao.HistoryDao
 import com.elegen.elegencashbook.data.local.dao.TransactionDao
 import com.elegen.elegencashbook.data.local.entity.BookEntity
@@ -13,6 +18,8 @@ import com.elegen.elegencashbook.data.local.entity.SyncQueueEntity
 import com.elegen.elegencashbook.data.local.entity.TransactionEntity
 import com.elegen.elegencashbook.data.local.prefs.AppPreferences
 import com.elegen.elegencashbook.data.mapper.toDomain
+import com.elegen.elegencashbook.data.mapper.toPermissionGrant
+import com.elegen.elegencashbook.data.mapper.toPermissionMembership
 import com.elegen.elegencashbook.domain.model.Book
 import com.elegen.elegencashbook.domain.model.BookWithBalance
 import com.elegen.elegencashbook.domain.model.Business
@@ -28,6 +35,7 @@ import com.elegen.elegencashbook.domain.repository.BookRepository
 import com.elegen.elegencashbook.domain.repository.BusinessRepository
 import com.elegen.elegencashbook.domain.repository.HistoryRepository
 import com.elegen.elegencashbook.domain.repository.LocalDataMaintenance
+import com.elegen.elegencashbook.domain.repository.PermissionRepository
 import com.elegen.elegencashbook.domain.repository.SettingsRepository
 import com.elegen.elegencashbook.domain.repository.TransactionRepository
 import kotlinx.coroutines.Dispatchers
@@ -374,6 +382,30 @@ class HistoryRepositoryImpl @Inject constructor(
 ) : HistoryRepository {
     override fun observeForEntity(entityType: HistoryEntityType, entityId: String): Flow<List<HistoryEntry>> =
         dao.observeForEntity(entityType.name, entityId).map { rows -> rows.map { it.toDomain() } }
+}
+
+@OptIn(ExperimentalCoroutinesApi::class)
+@Singleton
+class PermissionRepositoryImpl @Inject constructor(
+    private val bookDao: BookDao,
+    private val businessMemberDao: BusinessMemberDao,
+    private val bookGrantDao: BookGrantDao,
+    private val identity: ActiveIdentity,
+) : PermissionRepository {
+    // Recomputes on the book row's own changes; membership/grant changes take effect on the next
+    // book pull-through rather than live-pushing — sharing UI (P7) isn't built yet, so nothing
+    // currently needs a grant/membership edit to reflect without a screen re-entry.
+    override fun observeEffectivePermissions(bookId: String): Flow<Set<Permission>> =
+        bookDao.observeById(bookId).map { book ->
+            if (book == null) return@map emptySet()
+            val uid = identity.current()
+            val permBook = PermissionBook(book.businessId, book.ownerUid)
+            val membership = book.businessId
+                ?.let { businessMemberDao.getActiveMembership(it, uid) }
+                ?.toPermissionMembership()
+            val grant = bookGrantDao.getActiveGrant(bookId, uid)?.toPermissionGrant()
+            PermissionResolver.effective(uid, permBook, membership, grant)
+        }
 }
 
 @Singleton
