@@ -60,8 +60,10 @@ object PermissionResolver {
         if (membership == null) return emptySet()
         if (grant?.access == GrantAccess.DENY) return emptySet()
 
-        // admin "only these books": scoped admin needs an explicit ALLOW grant on this book
-        if (membership.role == BusinessRole.ADMIN && membership.bookScoped && grant?.access != GrantAccess.ALLOW) {
+        // "only these books": any scoped member (not just ADMIN — a VIEWER invited to a single
+        // book via share_book is scoped too) needs an explicit ALLOW grant on this book, or they'd
+        // see every other book in the business through their role defaults instead.
+        if (membership.bookScoped && grant?.access != GrantAccess.ALLOW) {
             return emptySet()
         }
 

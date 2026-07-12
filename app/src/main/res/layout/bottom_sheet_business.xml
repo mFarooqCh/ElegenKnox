@@ -37,12 +37,43 @@
 
     <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/surface_gray" />
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/business_list"
+    <TextView
+        android:id="@+id/label_owned_businesses"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="14dp"
+        android:text="YOUR BUSINESS"
+        android:textColor="@color/text_muted"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.05" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/business_list_owned"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:nestedScrollingEnabled="false" />
+
+    <TextView
+        android:id="@+id/label_shared_businesses"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:text="SHARED WITH YOU"
+        android:textColor="@color/text_muted"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.05"
+        android:visibility="gone" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/business_list_shared"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:nestedScrollingEnabled="false"
+        android:visibility="gone" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/add_business_button"

@@ -59,7 +59,16 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<LinearLayout>(R.id.row_business_team).setOnClickListener { comingSoon() }
         findViewById<LinearLayout>(R.id.row_move_requests).setOnClickListener { comingSoon() }
         findViewById<LinearLayout>(R.id.row_business_settings).setOnClickListener {
-            startActivity(Intent(this, BusinessSettingsActivity::class.java))
+            val business = uiState.activeBusiness
+            if (business == null) {
+                Toast.makeText(this, "Select a business first", Toast.LENGTH_SHORT).show()
+            } else {
+                startActivity(
+                    Intent(this, BusinessSettingsActivity::class.java)
+                        .putExtra("business_id", business.id)
+                        .putExtra("business_name", business.name)
+                )
+            }
         }
         findViewById<LinearLayout>(R.id.row_app_settings).setOnClickListener {
             startActivity(Intent(this, AppSettingsActivity::class.java))

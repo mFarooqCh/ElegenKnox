@@ -22,6 +22,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.elegen.elegencashbook.core.permission.Permission
 import com.elegen.elegencashbook.core.ui.setPrimaryEnabled
 import com.elegen.elegencashbook.feature.book.BookDetailsUiEvent
 import com.elegen.elegencashbook.feature.book.BookDetailsUiState
@@ -50,6 +51,9 @@ class BookDetailsActivity : AppCompatActivity() {
     private lateinit var tvTotalOut:        TextView
     private lateinit var tvEntryCount:      TextView
     private lateinit var entryListContainer: RecyclerView
+    private lateinit var btnCashIn: MaterialButton
+    private lateinit var btnCashOut: MaterialButton
+    private lateinit var toolbarAddMember: ImageButton
     private val entryAdapter = EntryAdapter()
 
     private var uiState = BookDetailsUiState()
@@ -90,10 +94,14 @@ class BookDetailsActivity : AppCompatActivity() {
         }
 
         findViewById<ImageButton>(R.id.toolbar_more).setOnClickListener { showBookMenu(it) }
+        toolbarAddMember = findViewById(R.id.toolbar_add_member)
+        toolbarAddMember.setOnClickListener { openBookAccess() }
 
         // ── Bottom buttons ────────────────────────────────────────────────
-        findViewById<MaterialButton>(R.id.btn_cash_in).setOnClickListener  { showEntryDialog(true)  }
-        findViewById<MaterialButton>(R.id.btn_cash_out).setOnClickListener { showEntryDialog(false) }
+        btnCashIn = findViewById(R.id.btn_cash_in)
+        btnCashOut = findViewById(R.id.btn_cash_out)
+        btnCashIn.setOnClickListener  { showEntryDialog(true)  }
+        btnCashOut.setOnClickListener { showEntryDialog(false) }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -155,6 +163,15 @@ class BookDetailsActivity : AppCompatActivity() {
     // ─────────────────────────────────────────────────────────────────────
     private fun bookName() = findViewById<TextView>(R.id.toolbar_title).text.toString()
 
+    private fun openBookAccess() {
+        startActivity(
+            Intent(this, BookAccessActivity::class.java)
+                .putExtra("book_id", intent.getStringExtra("book_id"))
+                .putExtra("book_name", bookName())
+                .putExtra("business_id", intent.getStringExtra("business_id"))
+        )
+    }
+
     private fun showBookMenu(anchor: View) {
         val popupWidthPx = (180 * resources.displayMetrics.density).toInt()
         val popupView = LayoutInflater.from(this).inflate(R.layout.popup_book_menu, null)
@@ -172,16 +189,21 @@ class BookDetailsActivity : AppCompatActivity() {
         }
 
         action(R.id.action_rename) { promptRenameBook() }
-        action(R.id.action_duplicate) {
-            viewModel.onEvent(BookDetailsUiEvent.DuplicateBook)
-            Toast.makeText(this, "\"${bookName()}\" duplicated", Toast.LENGTH_SHORT).show()
-        }
-        action(R.id.action_add_members) {
-            Toast.makeText(this, "Sharing books with members is coming soon", Toast.LENGTH_SHORT).show()
-        }
+        action(R.id.action_duplicate) { viewModel.onEvent(BookDetailsUiEvent.DuplicateBook) }
+        action(R.id.action_add_members) { openBookAccess() }
         action(R.id.action_move) { promptMoveBook() }
         action(R.id.action_history) { HistoryDialog.show(this, "\"${bookName()}\" Activity", uiState.historyItems) }
         action(R.id.action_delete) { confirmDeleteBook() }
+
+        val perms = uiState.permissions
+        fun setVisible(id: Int, visible: Boolean) {
+            popupView.findViewById<View>(id).visibility = if (visible) View.VISIBLE else View.GONE
+        }
+        setVisible(R.id.action_rename, Permission.BOOK_EDIT in perms)
+        setVisible(R.id.action_duplicate, Permission.BOOK_ADD in perms)
+        setVisible(R.id.action_add_members, Permission.MEMBER_MANAGE in perms)
+        setVisible(R.id.action_move, Permission.BOOK_EDIT in perms)
+        setVisible(R.id.action_delete, Permission.BOOK_DELETE in perms)
 
         val xOffset = anchor.width - popupWidthPx
         popupWindow.showAsDropDown(anchor, xOffset, 4)
@@ -276,6 +298,16 @@ class BookDetailsActivity : AppCompatActivity() {
         tvTotalOut.text      = "Rs ${state.totalOutText}"
         tvEntryCount.text    = "Showing $count ${if (count == 1) "entry" else "entries"}"
         entryAdapter.submit(state.entries)
+
+        val perms = state.permissions
+        btnCashIn.isEnabled = Permission.TX_ADD in perms
+        btnCashOut.isEnabled = Permission.TX_ADD in perms
+        toolbarAddMember.visibility = if (Permission.MEMBER_MANAGE in perms) View.VISIBLE else View.GONE
+
+        state.errorMessage?.let {
+            Toast.makeText(this, it, Toast.LENGTH_LONG).show()
+            viewModel.onEvent(BookDetailsUiEvent.ErrorShown)
+        }
     }
 
     /** [entries] arrive pre-grouped by date; a header row is inserted whenever the date changes. */

@@ -308,6 +308,19 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_logout"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="24dp"
+                android:text="LOG OUT"
+                android:textColor="@color/danger_red"
+                android:textSize="14sp"
+                app:strokeColor="@color/danger_red"
+                app:backgroundTint="@color/surface"
+                app:cornerRadius="10dp"
+                style="@style/Widget.Material3.Button.OutlinedButton" />
+
         </LinearLayout>
     </ScrollView>
 

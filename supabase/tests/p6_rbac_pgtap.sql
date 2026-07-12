@@ -15,7 +15,7 @@ create extension if not exists pgtap;
 
 begin;
 
-select plan(22);
+select plan(27);
 
 create temporary table pgtap_log (id serial primary key, line text);
 grant insert on pgtap_log to authenticated;
@@ -80,6 +80,23 @@ begin
   set local role authenticated;
 end;
 $$;
+
+-- ══════════════════════════════ 0. Fresh-row upsert bootstrap (regression) ═════════════════════
+-- Real bug found via on-device testing: PostgREST's upsert() always compiles to
+-- INSERT ... ON CONFLICT DO UPDATE, which requires the SELECT policy to pass to check for a
+-- conflicting row — even on a pure first-time insert with no actual conflict. The owner's own
+-- business_members row doesn't exist until AFTER this insert's trigger runs, so a naive
+-- business_role()-only policy deadlocks a brand-new business forever. Fixed by OR-ing in the
+-- row's own ownership column (spec migration 20260712000004).
+select fx_login(fx('owner'));
+insert into pgtap_log(line) select lives_ok(
+  format($$insert into public.businesses (id, name, owner_uid, currency, created_at, version, device_id, deleted_at)
+           values (gen_random_uuid(), 'Bootstrap Biz', %L, 'PKR', 0, 1, 'dev1', null)
+           on conflict (id) do update set name = excluded.name$$, fx('owner')),
+  'owner can upsert (INSERT ... ON CONFLICT DO UPDATE) a brand-new business'
+);
+
+reset role;
 
 -- ══════════════════════════════ 1. Non-member denied ══════════════════════════════════════════
 select fx_login(fx('stranger'));
@@ -222,6 +239,31 @@ insert into pgtap_log(line) select throws_ok(
   format($$select public.invite_to_business(%L, 'nobody@nowhere.invalid', 'VIEWER')$$, fx('biz')),
   'P0001', 'USER_NOT_REGISTERED', 'inviting an unregistered address is rejected'
 );
+
+reset role;
+
+-- ══════ 14. share_book on a business book grants real visibility, not just an inert row (regression) ══
+-- Real bug found via on-device testing: share_book() inserted only a book_grants row. But
+-- effective_perms() for a business-owned book hard-requires an ACTIVE business_members row before
+-- it even looks at book_grants -- so sharing a business book with someone who wasn't already a
+-- member was a complete no-op: they could see neither the business (sel_biz gates on
+-- business_role()) nor the book. Fixed (migration 20260712000005) by having share_book also insert
+-- a minimal VIEWER, book_scoped=true membership row when the target isn't already a member.
+select fx_login(fx('owner'));
+insert into pgtap_log(line) select is((select count(*) from public.business_members where business_id = fx('biz') and user_uid = fx('stranger'))::int, 0, 'stranger has no membership before share_book');
+select public.share_book(fx('book_a'), 'stranger@test.local', array['BOOK_VIEW']);
+
+reset role;
+
+select fx_login(fx('stranger'));
+insert into pgtap_log(line) select is((select count(*) from public.businesses where id = fx('biz'))::int, 1, 'after share_book, stranger can see the business');
+insert into pgtap_log(line) select is((select count(*) from public.books where id = fx('book_a'))::int, 1, 'after share_book, stranger can see the shared book');
+-- Real bug found via on-device testing (2nd part): effective_perms()'s book_scoped allow-list
+-- check only fired for role = 'ADMIN'. share_book creates a VIEWER, book_scoped=true row, which
+-- fell through that check untouched and got BOOK_VIEW on every book in the business via the
+-- VIEWER role-default branch -- not just book_a. Fixed (migration 20260712000006) by generalizing
+-- the scoping check to any role.
+insert into pgtap_log(line) select is((select count(*) from public.books where id = fx('book_b'))::int, 0, 'scoped VIEWER from share_book cannot see the business''s OTHER book (not allow-listed)');
 
 reset role;
 

@@ -80,7 +80,9 @@ UI (Activity) → ViewModel (StateFlow<UiState>/onEvent) → UseCase → Reposit
 
 P0–P5 done, proof gates passed. `RemotePull`, `ConflictResolver` (pure LWW, 7 unit tests), `SyncPullWorker`, `CleanupWorker` in place; two-device proof gate verified 2026-07-12 (add/delete propagation, LWW conflict winner match, uninstall/reinstall/login restore, P0–P4 regression green).
 
-P6 (RBAC backend + permission core) done on branch `feature/p6-rbac`, proof gate passed 2026-07-12 — 22/22 pgTAP assertions green, 122/122 unit tests green. Uses its own dev Supabase project (`cashbook.permissions`), not hosted prod — not yet merged to master. `business_members`/`book_grants`/`audit_log` tables, `effective_perms()` SQL function + RLS + enforce triggers + 7 RPCs server-side; `core/permission/Permission.kt` (`PermissionResolver`) + Room mirrors client-side, wired into `BookDetailsViewModel` with no visible UI change (sharing UI is P7). See handoff_notes.md for full detail.
+P6 (RBAC backend + permission core) done on branch `feature/p6-rbac`, proof gate passed 2026-07-12 — 22/22 pgTAP assertions green, 122/122 unit tests green. Uses its own dev Supabase project (`cashbook.permissions`), not hosted prod — not yet merged to master. `business_members`/`book_grants`/`audit_log` tables, `effective_perms()` SQL function + RLS + enforce triggers + 7 RPCs server-side; `core/permission/Permission.kt` (`PermissionResolver`) + Room mirrors client-side, wired into `BookDetailsViewModel` with no visible UI change (sharing UI is P7).
+
+P7 (sharing UI + collaboration) code done 2026-07-12 on the same branch — `SharingRepository` (RPC-only, no local path), `MembersActivity`/`BookAccessActivity` screens, Realtime subscription on the active business while foregrounded. **Two-account/two-device proof gate not run** — needs the user, see handoff_notes.md §5 for exact steps.
 
 ## Testing / gates
 

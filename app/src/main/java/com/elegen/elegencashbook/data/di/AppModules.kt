@@ -10,6 +10,7 @@ import com.elegen.elegencashbook.core.security.TinkEncryptor
 import com.elegen.elegencashbook.data.identity.ActiveIdentity
 import com.elegen.elegencashbook.data.identity.IdentityManager
 import com.elegen.elegencashbook.data.remote.supabase.AuthRepositoryImpl
+import com.elegen.elegencashbook.data.remote.supabase.SharingRepositoryImpl
 import com.elegen.elegencashbook.data.repository.LocalDataMaintenanceImpl
 import com.elegen.elegencashbook.domain.repository.AuthRepository
 import com.elegen.elegencashbook.domain.repository.LocalDataMaintenance
@@ -37,6 +38,7 @@ import com.elegen.elegencashbook.domain.repository.BusinessRepository
 import com.elegen.elegencashbook.domain.repository.HistoryRepository
 import com.elegen.elegencashbook.domain.repository.PermissionRepository
 import com.elegen.elegencashbook.domain.repository.SettingsRepository
+import com.elegen.elegencashbook.domain.repository.SharingRepository
 import com.elegen.elegencashbook.domain.repository.SyncScheduler
 import com.elegen.elegencashbook.domain.repository.TransactionRepository
 import dagger.Binds
@@ -119,4 +121,7 @@ abstract class BindingsModule {
 
     @Binds @Singleton
     abstract fun bindPermissionRepository(impl: PermissionRepositoryImpl): PermissionRepository
+
+    @Binds @Singleton
+    abstract fun bindSharingRepository(impl: SharingRepositoryImpl): SharingRepository
 }

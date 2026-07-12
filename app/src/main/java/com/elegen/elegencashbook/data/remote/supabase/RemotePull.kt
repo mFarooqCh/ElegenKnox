@@ -149,13 +149,17 @@ class RemotePull @Inject constructor(
     }
 }
 
-/** Postgres timestamptz comes back as ISO-8601 with an offset — parse via OffsetDateTime, not Instant (no bare 'Z' guarantee). */
-private fun parseTimestamp(iso: String): Long = OffsetDateTime.parse(iso).toInstant().toEpochMilli()
+/**
+ * Postgres timestamptz comes back as ISO-8601 with an offset — parse via OffsetDateTime, not
+ * Instant (no bare 'Z' guarantee). Internal (not private): [RealtimeSync] reuses this and the
+ * JsonObject helpers/entity mappers below — both parse the same postgrest/realtime row shape.
+ */
+internal fun parseTimestamp(iso: String): Long = OffsetDateTime.parse(iso).toInstant().toEpochMilli()
 
-private fun JsonObject.str(key: String): String = getValue(key).jsonPrimitive.content
-private fun JsonObject.strOrNull(key: String): String? = get(key)?.jsonPrimitive?.contentOrNull
-private fun JsonObject.long(key: String): Long = getValue(key).jsonPrimitive.long
-private fun JsonObject.longOrNull(key: String): Long? = get(key)?.jsonPrimitive?.longOrNull
+internal fun JsonObject.str(key: String): String = getValue(key).jsonPrimitive.content
+internal fun JsonObject.strOrNull(key: String): String? = get(key)?.jsonPrimitive?.contentOrNull
+internal fun JsonObject.long(key: String): Long = getValue(key).jsonPrimitive.long
+internal fun JsonObject.longOrNull(key: String): Long? = get(key)?.jsonPrimitive?.longOrNull
 private fun JsonObject.bool(key: String): Boolean = getValue(key).jsonPrimitive.boolean
 /** jsonb columns arrive already parsed as a JsonElement — re-serialize to text for Room's TEXT column. */
 private fun JsonObject.rawJsonOrNull(key: String): String? = get(key)?.takeUnless { it is JsonNull }?.toString()
@@ -175,7 +179,7 @@ private fun JsonObject.toBusinessEntity(updatedAt: Long) = BusinessEntity(
     ),
 )
 
-private fun JsonObject.toBookEntity(updatedAt: Long) = BookEntity(
+internal fun JsonObject.toBookEntity(updatedAt: Long) = BookEntity(
     id = str("id"),
     businessId = strOrNull("business_id"),
     ownerUid = str("owner_uid"),
@@ -191,7 +195,7 @@ private fun JsonObject.toBookEntity(updatedAt: Long) = BookEntity(
     ),
 )
 
-private fun JsonObject.toTransactionEntity(updatedAt: Long) = TransactionEntity(
+internal fun JsonObject.toTransactionEntity(updatedAt: Long) = TransactionEntity(
     id = str("id"),
     bookId = str("book_id"),
     type = str("type"),

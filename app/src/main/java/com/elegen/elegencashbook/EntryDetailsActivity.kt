@@ -105,6 +105,11 @@ class EntryDetailsActivity : AppCompatActivity() {
 
         historyEmptyText.visibility = if (state.historyItems.isEmpty()) View.VISIBLE else View.GONE
         HistoryDialog.populate(this, historyContainer, state.historyItems)
+
+        state.errorMessage?.let {
+            Toast.makeText(this, it, Toast.LENGTH_LONG).show()
+            viewModel.onEvent(EntryDetailsUiEvent.ErrorShown)
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────

@@ -143,6 +143,11 @@ class GetEffectivePermissions @Inject constructor(private val repo: PermissionRe
     operator fun invoke(bookId: String): Flow<Set<Permission>> = repo.observeEffectivePermissions(bookId)
 }
 
+/** Display only (e.g. the business switcher's role badge) — see [PermissionRepository.myBusinessRole]. */
+class GetMyBusinessRole @Inject constructor(private val repo: PermissionRepository) {
+    suspend operator fun invoke(businessId: String) = repo.myBusinessRole(businessId)
+}
+
 
 /** Balance math — exact Money arithmetic; overflow throws (constitution §4). */
 class GetBalance @Inject constructor() {

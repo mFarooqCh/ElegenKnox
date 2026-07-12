@@ -19,6 +19,7 @@ import com.elegen.elegencashbook.domain.usecase.UpdateTransaction
 import com.elegen.elegencashbook.feature.history.HistoryItem
 import com.elegen.elegencashbook.feature.history.toHistoryItem
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -46,6 +47,7 @@ data class EntryDetailsUiState(
     val otherBooks: List<BookOption> = emptyList(),
     /** This entry's own edit history, newest first. */
     val historyItems: List<HistoryItem> = emptyList(),
+    val errorMessage: String? = null,
 )
 
 sealed interface EntryDetailsUiEvent {
@@ -53,6 +55,7 @@ sealed interface EntryDetailsUiEvent {
     data object Delete : EntryDetailsUiEvent
     data class Move(val targetBookId: String) : EntryDetailsUiEvent
     data class Copy(val targetBookId: String) : EntryDetailsUiEvent
+    data object ErrorShown : EntryDetailsUiEvent
 }
 
 @HiltViewModel
@@ -73,15 +76,17 @@ class EntryDetailsViewModel @Inject constructor(
     private val dateFmt = SimpleDateFormat("d MMM yyyy", Locale.getDefault())
     private val timeFmt = SimpleDateFormat("h:mm a", Locale.getDefault())
     private val historyDateFmt = SimpleDateFormat("d MMM yyyy, h:mm a", Locale.getDefault())
+    private val _errorMessage = MutableStateFlow<String?>(null)
 
     val state: StateFlow<EntryDetailsUiState> = combine(
         observeTransaction(entryId),
         businessId?.let { listBooks(it) } ?: flowOf(emptyList()),
         getEntityHistory(HistoryEntityType.TRANSACTION, entryId),
-    ) { transaction, books, history -> buildState(transaction, books, history) }
+        _errorMessage,
+    ) { transaction, books, history, error -> buildState(transaction, books, history, error) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EntryDetailsUiState())
 
-    private fun buildState(transaction: Transaction?, books: List<BookWithBalance>, history: List<HistoryEntry>): EntryDetailsUiState {
+    private fun buildState(transaction: Transaction?, books: List<BookWithBalance>, history: List<HistoryEntry>, errorMessage: String?): EntryDetailsUiState {
         if (transaction == null) return EntryDetailsUiState(exists = false)
         return EntryDetailsUiState(
             exists = true,
@@ -97,12 +102,21 @@ class EntryDetailsViewModel @Inject constructor(
                 .filterNot { it.book.id == transaction.bookId }
                 .map { BookOption(it.book.id, it.book.name, it.entryCount) },
             historyItems = history.map { it.toHistoryItem(historyDateFmt) },
+            errorMessage = errorMessage,
         )
+    }
+
+    /** Local writes enforce real capabilities (spec §8.3) now, not just raw ownership — a denied
+     * mutation must surface here instead of silently no-op'ing or crashing the app uncaught. */
+    private fun runGuarded(block: suspend () -> Unit) {
+        viewModelScope.launch {
+            runCatching { block() }.onFailure { e -> _errorMessage.value = e.message }
+        }
     }
 
     fun onEvent(event: EntryDetailsUiEvent) {
         when (event) {
-            is EntryDetailsUiEvent.SaveEdit -> viewModelScope.launch {
+            is EntryDetailsUiEvent.SaveEdit -> runGuarded {
                 val current = state.value
                 updateTransaction(
                     Transaction(
@@ -116,9 +130,10 @@ class EntryDetailsViewModel @Inject constructor(
                     )
                 )
             }
-            EntryDetailsUiEvent.Delete -> viewModelScope.launch { deleteTransaction(entryId) }
-            is EntryDetailsUiEvent.Move -> viewModelScope.launch { moveTransaction(entryId, event.targetBookId) }
-            is EntryDetailsUiEvent.Copy -> viewModelScope.launch { copyTransaction(entryId, event.targetBookId) }
+            EntryDetailsUiEvent.Delete -> runGuarded { deleteTransaction(entryId) }
+            is EntryDetailsUiEvent.Move -> runGuarded { moveTransaction(entryId, event.targetBookId) }
+            is EntryDetailsUiEvent.Copy -> runGuarded { copyTransaction(entryId, event.targetBookId) }
+            EntryDetailsUiEvent.ErrorShown -> _errorMessage.value = null
         }
     }
 }

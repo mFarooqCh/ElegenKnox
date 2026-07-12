@@ -25,13 +25,21 @@ interface BusinessDao {
     @Upsert
     suspend fun upsert(entity: BusinessEntity)
 
-    /** Scoped to the active identity (guest sentinel or real uid) — the device's isolation gate. */
+    /**
+     * Scoped to the active identity (guest sentinel or real uid) — the device's isolation gate.
+     * Owner OR active business_members row: an owner=false shared business (P6/P7) still has to
+     * show up here, not just businesses this device happens to own.
+     */
     @Query(
         """
         SELECT b.*, COUNT(bk.id) AS bookCount
         FROM businesses b
         LEFT JOIN books bk ON bk.businessId = b.id AND bk.deletedAt IS NULL
-        WHERE b.ownerUid = :uid AND b.deletedAt IS NULL
+        WHERE b.deletedAt IS NULL
+          AND (b.ownerUid = :uid OR EXISTS (
+            SELECT 1 FROM business_members m
+            WHERE m.businessId = b.id AND m.userUid = :uid AND m.status = 'ACTIVE'
+          ))
         GROUP BY b.id
         ORDER BY b.createdAt ASC
         """

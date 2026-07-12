@@ -1,5 +1,6 @@
 package com.elegen.elegencashbook
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.ImageButton
@@ -29,6 +30,14 @@ class BusinessSettingsActivity : AppCompatActivity() {
         }
 
         findViewById<ImageButton>(R.id.business_settings_back).setOnClickListener { finish() }
+
+        findViewById<LinearLayout>(R.id.row_members).setOnClickListener {
+            startActivity(
+                Intent(this, MembersActivity::class.java)
+                    .putExtra("business_id", intent.getStringExtra("business_id"))
+                    .putExtra("business_name", intent.getStringExtra("business_name"))
+            )
+        }
 
         val comingSoon = { Toast.makeText(this, "Coming soon", Toast.LENGTH_SHORT).show() }
         findViewById<LinearLayout>(R.id.row_business_profile).setOnClickListener { comingSoon() }

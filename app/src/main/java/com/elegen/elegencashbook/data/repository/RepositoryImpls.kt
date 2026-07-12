@@ -1,6 +1,7 @@
 package com.elegen.elegencashbook.data.repository
 
 import com.elegen.elegencashbook.core.money.Money
+import com.elegen.elegencashbook.core.permission.BusinessRole
 import com.elegen.elegencashbook.core.permission.Permission
 import com.elegen.elegencashbook.core.permission.PermissionBook
 import com.elegen.elegencashbook.core.permission.PermissionResolver
@@ -27,6 +28,7 @@ import com.elegen.elegencashbook.domain.model.BusinessOverview
 import com.elegen.elegencashbook.domain.model.EntryType
 import com.elegen.elegencashbook.domain.model.HistoryEntityType
 import com.elegen.elegencashbook.domain.model.HistoryEntry
+import com.elegen.elegencashbook.domain.model.PermissionDeniedException
 import com.elegen.elegencashbook.domain.model.Transaction
 import androidx.room.withTransaction
 import com.elegen.elegencashbook.data.identity.ActiveIdentity
@@ -121,11 +123,18 @@ class BookRepositoryImpl @Inject constructor(
     private val prefs: AppPreferences,
     private val identity: ActiveIdentity,
     private val outbox: OutboxWriter,
+    private val permissionRepository: PermissionRepository,
 ) : BookRepository {
 
-    // Scoped by businessId; access to the business is already the identity gate (BusinessRepository).
+    // Business-level visibility (BusinessRepository) is NOT enough on its own: a book-scoped
+    // member (share_book / invite with a book scope) can see the business but only specific
+    // books within it. Real bug found via on-device testing: sharing one book out of four still
+    // showed all four, because this only ever filtered by businessId with no per-book check.
     override fun observeBooksWithBalance(businessId: String): Flow<List<BookWithBalance>> =
-        dao.observeWithBalance(businessId).map { rows -> rows.map { it.toDomain() } }
+        dao.observeWithBalance(businessId).map { rows ->
+            rows.map { it.toDomain() }
+                .filter { Permission.BOOK_VIEW in permissionRepository.effectivePermissions(it.book.id) }
+        }
 
     private suspend fun logHistory(bookId: String, action: String, changes: String?) {
         historyDao.insert(
@@ -144,6 +153,9 @@ class BookRepositoryImpl @Inject constructor(
     }
 
     override suspend fun create(businessId: String, name: String): Book {
+        if (Permission.BOOK_ADD !in permissionRepository.effectiveBusinessCapabilities(businessId)) {
+            throw PermissionDeniedException()
+        }
         val now = System.currentTimeMillis()
         val entity = BookEntity(
             id = UUID.randomUUID().toString(),
@@ -161,9 +173,18 @@ class BookRepositoryImpl @Inject constructor(
         }
     }
 
-    /** Only the owning identity may mutate a book — belt-and-suspenders alongside the UI's own scoping. */
-    private suspend fun ownedBook(bookId: String): BookEntity? =
-        dao.getById(bookId)?.takeIf { it.ownerUid == identity.current() }
+    /**
+     * Real capability check (spec §8.3), not just raw ownership — a shared ADMIN/OWNER
+     * collaborator legitimately needs to mutate books they didn't personally create. Without this,
+     * Room would happily accept the write locally (offline-first never refuses a write) and the
+     * mutation would then either silently vanish on the next pull or sit stuck un-pushed in the
+     * outbox forever, with the user never told why (real bug found on-device, P7).
+     */
+    private suspend fun requireBookCapability(bookId: String, capability: Permission): BookEntity {
+        val book = dao.getById(bookId) ?: throw PermissionDeniedException("Book not found")
+        if (capability !in permissionRepository.effectivePermissions(bookId)) throw PermissionDeniedException()
+        return book
+    }
 
     /** [logIfNoChange] = false skips the history row when [changes] ends up null (e.g. rename to the same name). */
     private suspend fun bump(
@@ -184,29 +205,29 @@ class BookRepositoryImpl @Inject constructor(
     }
 
     override suspend fun rename(bookId: String, name: String) {
-        val existing = ownedBook(bookId) ?: return
+        val existing = requireBookCapability(bookId, Permission.BOOK_EDIT)
         val changes = buildChanges(Triple("name", existing.name, name))
         bump(existing, SyncQueueEntity.OP_UPDATE, HistoryEntity.ACTION_RENAMED, changes, logIfNoChange = false) { copy(name = name) }
     }
 
     override suspend fun softDelete(bookId: String) {
-        val existing = ownedBook(bookId) ?: return
+        val existing = requireBookCapability(bookId, Permission.BOOK_DELETE)
         bump(existing, SyncQueueEntity.OP_DELETE, HistoryEntity.ACTION_DELETED, deletedAt = System.currentTimeMillis())
     }
 
     override suspend fun restore(bookId: String) {
-        val existing = ownedBook(bookId) ?: return
+        val existing = requireBookCapability(bookId, Permission.BOOK_DELETE)
         bump(existing, SyncQueueEntity.OP_UPDATE, HistoryEntity.ACTION_RESTORED, deletedAt = null)
     }
 
     override suspend fun move(bookId: String, targetBusinessId: String) {
-        val existing = ownedBook(bookId) ?: return
+        val existing = requireBookCapability(bookId, Permission.BOOK_EDIT)
         val changes = buildChanges(Triple("businessId", existing.businessId, targetBusinessId))
         bump(existing, SyncQueueEntity.OP_UPDATE, HistoryEntity.ACTION_MOVED, changes, logIfNoChange = false) { copy(businessId = targetBusinessId) }
     }
 
     override suspend fun duplicate(bookId: String): Book {
-        val existing = ownedBook(bookId) ?: error("Book not found")
+        val existing = requireBookCapability(bookId, Permission.BOOK_ADD)
         val now = System.currentTimeMillis()
         val copy = existing.copy(
             id = UUID.randomUUID().toString(),
@@ -257,6 +278,7 @@ class TransactionRepositoryImpl @Inject constructor(
     private val prefs: AppPreferences,
     private val identity: ActiveIdentity,
     private val outbox: OutboxWriter,
+    private val permissionRepository: PermissionRepository,
 ) : TransactionRepository {
 
     override fun observeEntries(bookId: String): Flow<List<Transaction>> =
@@ -281,6 +303,11 @@ class TransactionRepositoryImpl @Inject constructor(
         )
     }
 
+    /** Same reasoning as BookRepositoryImpl.requireBookCapability — real capability, not raw ownership. */
+    private suspend fun requireCapability(bookId: String, capability: Permission) {
+        if (capability !in permissionRepository.effectivePermissions(bookId)) throw PermissionDeniedException()
+    }
+
     override suspend fun add(
         bookId: String,
         type: EntryType,
@@ -288,6 +315,7 @@ class TransactionRepositoryImpl @Inject constructor(
         description: String,
         createdAt: Long,
     ): Transaction {
+        requireCapability(bookId, Permission.TX_ADD)
         val now = System.currentTimeMillis()
         val entity = TransactionEntity(
             id = UUID.randomUUID().toString(),
@@ -326,7 +354,8 @@ class TransactionRepositoryImpl @Inject constructor(
     }
 
     override suspend fun update(transaction: Transaction) {
-        val existing = dao.getById(transaction.id) ?: return
+        val existing = dao.getById(transaction.id) ?: throw PermissionDeniedException("Entry not found")
+        requireCapability(existing.bookId, Permission.TX_EDIT)
         val changes = buildChanges(
             Triple("type", existing.type, transaction.type.name),
             Triple("amountPaisa", existing.amountPaisa, transaction.amount.paisa),
@@ -344,23 +373,28 @@ class TransactionRepositoryImpl @Inject constructor(
     }
 
     override suspend fun softDelete(id: String) {
-        val existing = dao.getById(id) ?: return
+        val existing = dao.getById(id) ?: throw PermissionDeniedException("Entry not found")
+        requireCapability(existing.bookId, Permission.TX_DELETE)
         bump(existing, SyncQueueEntity.OP_DELETE, HistoryEntity.ACTION_DELETED, deletedAt = System.currentTimeMillis())
     }
 
     override suspend fun restore(id: String) {
-        val existing = dao.getById(id) ?: return
+        val existing = dao.getById(id) ?: throw PermissionDeniedException("Entry not found")
+        requireCapability(existing.bookId, Permission.TX_DELETE)
         bump(existing, SyncQueueEntity.OP_UPDATE, HistoryEntity.ACTION_RESTORED, deletedAt = null)
     }
 
     override suspend fun move(id: String, targetBookId: String) {
-        val existing = dao.getById(id) ?: return
+        val existing = dao.getById(id) ?: throw PermissionDeniedException("Entry not found")
+        requireCapability(existing.bookId, Permission.TX_EDIT)
+        requireCapability(targetBookId, Permission.TX_ADD)
         val changes = buildChanges(Triple("bookId", existing.bookId, targetBookId))
         bump(existing, SyncQueueEntity.OP_UPDATE, HistoryEntity.ACTION_MOVED, changes, logIfNoChange = false) { copy(bookId = targetBookId) }
     }
 
     override suspend fun copyTo(id: String, targetBookId: String): Transaction {
-        val existing = dao.getById(id) ?: error("Entry not found")
+        val existing = dao.getById(id) ?: throw PermissionDeniedException("Entry not found")
+        requireCapability(targetBookId, Permission.TX_ADD)
         val now = System.currentTimeMillis()
         val copy = existing.copy(
             id = UUID.randomUUID().toString(),
@@ -387,25 +421,58 @@ class HistoryRepositoryImpl @Inject constructor(
 @OptIn(ExperimentalCoroutinesApi::class)
 @Singleton
 class PermissionRepositoryImpl @Inject constructor(
+    private val businessDao: BusinessDao,
     private val bookDao: BookDao,
     private val businessMemberDao: BusinessMemberDao,
     private val bookGrantDao: BookGrantDao,
     private val identity: ActiveIdentity,
 ) : PermissionRepository {
-    // Recomputes on the book row's own changes; membership/grant changes take effect on the next
-    // book pull-through rather than live-pushing — sharing UI (P7) isn't built yet, so nothing
-    // currently needs a grant/membership edit to reflect without a screen re-entry.
+    /**
+     * The local business_members mirror only populates after a pull cycle — it can legitimately
+     * lag well behind "I just created this business/book" (the real root cause behind three
+     * separate bugs found on-device this session: Members' invite button, BookAccess's share
+     * button, and this one — an owner locked out of renaming/duplicating/deleting their OWN
+     * just-created book because their own OWNER membership row hadn't synced down yet). If the
+     * resolver comes back empty for a business book purely because the membership lookup missed,
+     * but the book's own cached owner_uid is me, treat it as mine — same escape hatch as
+     * [effectiveBusinessCapabilities]. Personal books don't need this: [PermissionResolver.effective]
+     * already checks owner_uid directly with no membership lookup at all.
+     */
+    private suspend fun computeEffective(book: BookEntity): Set<Permission> {
+        val uid = identity.current()
+        val permBook = PermissionBook(book.businessId, book.ownerUid)
+        val membership = book.businessId
+            ?.let { businessMemberDao.getActiveMembership(it, uid) }
+            ?.toPermissionMembership()
+        val grant = bookGrantDao.getActiveGrant(book.id, uid)?.toPermissionGrant()
+        val resolved = PermissionResolver.effective(uid, permBook, membership, grant)
+        if (resolved.isEmpty() && book.businessId != null && book.ownerUid == uid) return Permission.entries.toSet()
+        return resolved
+    }
+
     override fun observeEffectivePermissions(bookId: String): Flow<Set<Permission>> =
-        bookDao.observeById(bookId).map { book ->
-            if (book == null) return@map emptySet()
-            val uid = identity.current()
-            val permBook = PermissionBook(book.businessId, book.ownerUid)
-            val membership = book.businessId
-                ?.let { businessMemberDao.getActiveMembership(it, uid) }
-                ?.toPermissionMembership()
-            val grant = bookGrantDao.getActiveGrant(bookId, uid)?.toPermissionGrant()
-            PermissionResolver.effective(uid, permBook, membership, grant)
-        }
+        bookDao.observeById(bookId).map { book -> book?.let { computeEffective(it) } ?: emptySet() }
+
+    override suspend fun effectivePermissions(bookId: String): Set<Permission> {
+        val book = bookDao.getById(bookId) ?: return emptySet()
+        return computeEffective(book)
+    }
+
+    override suspend fun effectiveBusinessCapabilities(businessId: String): Set<Permission> {
+        val uid = identity.current()
+        val membership = businessMemberDao.getActiveMembership(businessId, uid)
+        if (membership != null) return BusinessRole.valueOf(membership.role).defaults()
+        val business = businessDao.getById(businessId)
+        return if (business?.ownerUid == uid) Permission.entries.toSet() else emptySet()
+    }
+
+    override suspend fun myBusinessRole(businessId: String): BusinessRole? {
+        val uid = identity.current()
+        businessMemberDao.getActiveMembership(businessId, uid)?.let { return BusinessRole.valueOf(it.role) }
+        // Same mirror-lag gap as computeEffective() above: a just-created business has no local
+        // business_members row yet (pull cycle hasn't run), but its creator is still the OWNER.
+        return if (businessDao.getById(businessId)?.ownerUid == uid) BusinessRole.OWNER else null
+    }
 }
 
 @Singleton

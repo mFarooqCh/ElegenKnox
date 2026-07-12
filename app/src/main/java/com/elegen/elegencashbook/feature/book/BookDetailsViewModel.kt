@@ -26,6 +26,7 @@ import com.elegen.elegencashbook.domain.usecase.RestoreTransaction
 import com.elegen.elegencashbook.feature.history.HistoryItem
 import com.elegen.elegencashbook.feature.history.toHistoryItem
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -61,11 +62,12 @@ data class BookDetailsUiState(
     /** Book-level changes only (rename/move/delete/restore/create) — not its entries', newest first. */
     val historyItems: List<HistoryItem> = emptyList(),
     /**
-     * UX-gating only (spec §8.3) — no button wiring yet (P6 is backend-only, sharing UI is P7),
-     * so this has no visible effect: an owner's set is always everything. Real enforcement is
-     * server-side (RLS + Postgres triggers), never this cached copy.
+     * UX-gating (spec §8.3) — drives which buttons/menu items are enabled. Real enforcement is
+     * server-side (RLS + Postgres triggers) plus a local pre-write check in the repository layer;
+     * never trust this alone for security.
      */
     val permissions: Set<Permission> = Permission.entries.toSet(),
+    val errorMessage: String? = null,
 )
 
 sealed interface BookDetailsUiEvent {
@@ -84,6 +86,7 @@ sealed interface BookDetailsUiEvent {
     data object DeleteBook : BookDetailsUiEvent
     data object RestoreBook : BookDetailsUiEvent
     data class MoveBook(val targetBusinessId: String) : BookDetailsUiEvent
+    data object ErrorShown : BookDetailsUiEvent
 }
 
 @HiltViewModel
@@ -111,18 +114,28 @@ class BookDetailsViewModel @Inject constructor(
     private val dateFmt = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     private val timeFmt = SimpleDateFormat("hh:mm a", Locale.getDefault())
     private val historyDateFmt = SimpleDateFormat("d MMM yyyy, h:mm a", Locale.getDefault())
+    private val _errorMessage = MutableStateFlow<String?>(null)
 
     val state: StateFlow<BookDetailsUiState> = combine(
         observeBookEntries(bookId),
         listMyBusinesses(),
         getEntityHistory(HistoryEntityType.BOOK, bookId),
         getEffectivePermissions(bookId),
-    ) { entries, businesses, history, permissions -> buildState(entries, businesses, history, permissions) }
+        _errorMessage,
+    ) { entries, businesses, history, permissions, error -> buildState(entries, businesses, history, permissions, error) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BookDetailsUiState())
+
+    /** Local writes enforce real capabilities (spec §8.3) now, not just raw ownership — a denied
+     * mutation must surface here instead of silently no-op'ing or crashing the app uncaught. */
+    private fun runGuarded(block: suspend () -> Unit) {
+        viewModelScope.launch {
+            runCatching { block() }.onFailure { e -> _errorMessage.value = e.message }
+        }
+    }
 
     fun onEvent(event: BookDetailsUiEvent) {
         when (event) {
-            is BookDetailsUiEvent.SaveEntry -> viewModelScope.launch {
+            is BookDetailsUiEvent.SaveEntry -> runGuarded {
                 addTransaction(
                     bookId = bookId,
                     type = if (event.isCashIn) EntryType.CASH_IN else EntryType.CASH_OUT,
@@ -131,13 +144,14 @@ class BookDetailsViewModel @Inject constructor(
                     createdAt = event.entryAt,
                 )
             }
-            is BookDetailsUiEvent.DeleteEntry -> viewModelScope.launch { deleteTransaction(event.id) }
-            is BookDetailsUiEvent.RestoreEntry -> viewModelScope.launch { restoreTransaction(event.id) }
-            is BookDetailsUiEvent.RenameBook -> viewModelScope.launch { renameBook(bookId, event.name) }
-            BookDetailsUiEvent.DuplicateBook -> viewModelScope.launch { duplicateBook(bookId) }
-            BookDetailsUiEvent.DeleteBook -> viewModelScope.launch { deleteBook(bookId) }
-            BookDetailsUiEvent.RestoreBook -> viewModelScope.launch { restoreBook(bookId) }
-            is BookDetailsUiEvent.MoveBook -> viewModelScope.launch { moveBook(bookId, event.targetBusinessId) }
+            is BookDetailsUiEvent.DeleteEntry -> runGuarded { deleteTransaction(event.id) }
+            is BookDetailsUiEvent.RestoreEntry -> runGuarded { restoreTransaction(event.id) }
+            is BookDetailsUiEvent.RenameBook -> runGuarded { renameBook(bookId, event.name) }
+            BookDetailsUiEvent.DuplicateBook -> runGuarded { duplicateBook(bookId) }
+            BookDetailsUiEvent.DeleteBook -> runGuarded { deleteBook(bookId) }
+            BookDetailsUiEvent.RestoreBook -> runGuarded { restoreBook(bookId) }
+            is BookDetailsUiEvent.MoveBook -> runGuarded { moveBook(bookId, event.targetBusinessId) }
+            BookDetailsUiEvent.ErrorShown -> _errorMessage.value = null
         }
     }
 
@@ -147,6 +161,7 @@ class BookDetailsViewModel @Inject constructor(
         businesses: List<BusinessOverview>,
         history: List<HistoryEntry>,
         permissions: Set<Permission>,
+        errorMessage: String?,
     ): BookDetailsUiState {
         val summary = getBalance(entries)
         var running = Money.ZERO
@@ -176,6 +191,7 @@ class BookDetailsViewModel @Inject constructor(
                 .map { BusinessOption(it.business.id, it.business.name, it.bookCount) },
             historyItems = history.map { it.toHistoryItem(historyDateFmt) },
             permissions = permissions,
+            errorMessage = errorMessage,
         )
     }
 }

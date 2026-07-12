@@ -154,8 +154,10 @@ begin
     return array[]::text[];
   end if;
 
-  -- admin "only these books": scoped admin needs an explicit ALLOW grant per book
-  if v_role = 'ADMIN' and v_scoped and coalesce(v_grant_access, '') != 'ALLOW' then
+  -- "only these books": any scoped member (not just ADMIN — a VIEWER invited to a single book
+  -- via share_book is scoped too) needs an explicit ALLOW grant per book, or they'd see every
+  -- other book in the business through their role defaults instead.
+  if v_scoped and coalesce(v_grant_access, '') != 'ALLOW' then
     return array[]::text[];
   end if;
 

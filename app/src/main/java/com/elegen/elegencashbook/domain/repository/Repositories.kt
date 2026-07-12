@@ -1,8 +1,12 @@
 package com.elegen.elegencashbook.domain.repository
 
 import com.elegen.elegencashbook.core.money.Money
+import com.elegen.elegencashbook.core.permission.BusinessRole
+import com.elegen.elegencashbook.core.permission.GrantAccess
 import com.elegen.elegencashbook.core.permission.Permission
 import com.elegen.elegencashbook.domain.model.Book
+import com.elegen.elegencashbook.domain.model.BookGrantInfo
+import com.elegen.elegencashbook.domain.model.BusinessMember
 import com.elegen.elegencashbook.domain.model.BookWithBalance
 import com.elegen.elegencashbook.domain.model.Business
 import com.elegen.elegencashbook.domain.model.BusinessOverview
@@ -64,11 +68,60 @@ interface HistoryRepository {
 /**
  * Read-only UX permission cache (P6, spec §8.3). Writes to business_members/book_grants are
  * RPC-only (data/remote), never through this interface — this only resolves the caller's own
- * effective capability set on a book, for enabling/disabling buttons. Never trust this for
- * security; RLS + the Postgres enforce triggers are the real gate.
+ * effective capability set on a book, for enabling/disabling buttons AND for Book/TransactionRepositoryImpl's
+ * pre-write local guard (offline-first: Room never refuses a write on its own, so without this
+ * check a denied mutation "succeeds" locally and either silently disappears on the next pull or
+ * gets stuck un-pushed forever — see [com.elegen.elegencashbook.domain.model.PermissionDeniedException]).
+ * Never trust this for security; RLS + the Postgres enforce triggers are the real gate.
  */
 interface PermissionRepository {
     fun observeEffectivePermissions(bookId: String): Flow<Set<Permission>>
+
+    /** One-shot variant for a repository's own pre-write check (no need to collect a Flow for a single read). */
+    suspend fun effectivePermissions(bookId: String): Set<Permission>
+
+    /**
+     * Caller's own ACTIVE role in a business, straight from the local mirror — display only (e.g.
+     * the business switcher's role badge), never for gating an action (that mirror can lag a pull
+     * cycle behind; see [effectiveBusinessCapabilities] and [effectivePermissions], which both bake
+     * in an owner fallback for exactly that reason). Null while the mirror hasn't caught up yet or
+     * the caller isn't a member — callers should render that as blank, not default to a role.
+     */
+    suspend fun myBusinessRole(businessId: String): BusinessRole?
+
+    /**
+     * Business-level capabilities for actions not yet tied to an existing book (e.g. creating a
+     * new one). Falls back to full access when the caller is the business's own raw owner and the
+     * local business_members mirror hasn't caught up yet — same pull-cycle-lag class of bug
+     * already hit (and fixed) in the sharing UI; a business's own creator must never be locked out
+     * of their own just-created business by a mirror that hasn't synced yet.
+     */
+    suspend fun effectiveBusinessCapabilities(businessId: String): Set<Permission>
+}
+
+/**
+ * Sharing/collaboration writes (P7, spec §8.4) — every function here is a network RPC call;
+ * there is no local/offline path (constitution: sharing requires online, no fake success). Reads
+ * (member/grant lists) are one-shot suspend calls too, not cached Flows — the member list is a
+ * small, occasionally-viewed screen, not something that needs continuous Room-backed reactivity.
+ * @throws com.elegen.elegencashbook.domain.model.SharingException on any failure (offline, forbidden, business-rule rejection).
+ */
+interface SharingRepository {
+    suspend fun inviteToBusiness(
+        businessId: String,
+        emailOrPhone: String,
+        role: BusinessRole,
+        bookScope: List<String>? = null,
+        perBookPerms: Set<Permission>? = null,
+    ): String
+
+    suspend fun shareBook(bookId: String, emailOrPhone: String, perms: Set<Permission>? = null): String
+    suspend fun updateMemberRole(businessId: String, targetUid: String, role: BusinessRole)
+    suspend fun setBookGrant(bookId: String, targetUid: String, access: GrantAccess, permsOverride: Set<Permission>? = null)
+    suspend fun revokeMember(businessId: String, targetUid: String)
+    suspend fun revokeBookGrant(bookId: String, targetUid: String)
+    suspend fun listBusinessMembers(businessId: String): List<BusinessMember>
+    suspend fun listBookGrants(bookId: String): List<BookGrantInfo>
 }
 
 interface SettingsRepository {

@@ -6,8 +6,11 @@ import androidx.test.core.app.ApplicationProvider
 import com.elegen.elegencashbook.data.identity.ActiveIdentity
 import com.elegen.elegencashbook.data.local.dao.TransactionDao
 import com.elegen.elegencashbook.data.local.db.AppDatabase
+import com.elegen.elegencashbook.domain.model.PermissionDeniedException
 import com.elegen.elegencashbook.domain.repository.SyncScheduler
+import com.elegen.elegencashbook.data.local.entity.BookGrantEntity
 import com.elegen.elegencashbook.data.local.entity.BusinessEntity
+import com.elegen.elegencashbook.data.local.entity.BusinessMemberEntity
 import com.elegen.elegencashbook.data.local.entity.SyncEnvelope
 import com.elegen.elegencashbook.data.local.entity.TransactionEntity
 import com.elegen.elegencashbook.data.local.prefs.AppPreferences
@@ -76,7 +79,10 @@ class BookRepositoryImplTest {
     private fun outbox() = OutboxWriter(db, db.syncQueueDao(), NoopScheduler)
 
     private fun repo(identityUid: String = "u1", transactionDao: TransactionDao = db.transactionDao()) =
-        BookRepositoryImpl(db, db.bookDao(), transactionDao, db.historyDao(), prefs, FakeIdentity(identityUid), outbox())
+        BookRepositoryImpl(
+            db, db.bookDao(), transactionDao, db.historyDao(), prefs, FakeIdentity(identityUid), outbox(),
+            PermissionRepositoryImpl(db.businessDao(), db.bookDao(), db.businessMemberDao(), db.bookGrantDao(), FakeIdentity(identityUid)),
+        )
 
     private suspend fun seedBusinessAndBook(owner: String = "u1") {
         db.businessDao().upsert(BusinessEntity("biz", "Biz", owner, "PKR", 1L, envelope()))
@@ -114,14 +120,31 @@ class BookRepositoryImplTest {
     }
 
     @Test
-    fun `mutations are ignored for a book owned by another identity`() = runBlocking {
+    fun `mutations are rejected for a book with no local membership or ownership`() = runBlocking {
         seedBusinessAndBook(owner = "someone-else")
         val r = repo(identityUid = "u1")
-        r.rename("bk", "Hijacked")
-        r.softDelete("bk")
+        assertThrows(PermissionDeniedException::class.java) { runBlocking { r.rename("bk", "Hijacked") } }
+        assertThrows(PermissionDeniedException::class.java) { runBlocking { r.softDelete("bk") } }
         val book = db.bookDao().getById("bk")!!
         assertEquals("Book", book.name) // unchanged
         assertNull(book.sync.deletedAt) // not deleted
+    }
+
+    @Test
+    fun `book-scoped VIEWER only sees the allow-listed book, not every book in the business`() = runBlocking {
+        // Real bug found via on-device testing: share_book (or invite with a book scope) makes
+        // the business itself visible via a book_scoped membership row, but observeBooksWithBalance
+        // only ever filtered by businessId -- with zero per-book check -- so a member scoped to
+        // ONE book still saw every book the business had.
+        db.businessDao().upsert(BusinessEntity("biz", "Biz", "owner", "PKR", 1L, envelope()))
+        db.bookDao().upsert(com.elegen.elegencashbook.data.local.entity.BookEntity("bk1", "biz", "owner", "Shared Book", "PKR", 1L, envelope()))
+        db.bookDao().upsert(com.elegen.elegencashbook.data.local.entity.BookEntity("bk2", "biz", "owner", "Other Book", "PKR", 1L, envelope()))
+        db.businessMemberDao().upsert(BusinessMemberEntity("m1", "biz", "viewer", "VIEWER", "ACTIVE", bookScoped = true, null, 1L, 1L))
+        db.bookGrantDao().upsert(BookGrantEntity("g1", "bk1", "viewer", "ALLOW", null, "owner", 1L, 1L, null))
+
+        val books = repo(identityUid = "viewer").observeBooksWithBalance("biz").first()
+
+        assertEquals(listOf("bk1"), books.map { it.book.id })
     }
 
     @Test

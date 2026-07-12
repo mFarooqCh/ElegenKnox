@@ -1,5 +1,6 @@
 package com.elegen.elegencashbook
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.EditText
@@ -9,6 +10,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -47,12 +49,30 @@ class ProfileActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.btn_change_phone).setOnClickListener { comingSoon() }
         findViewById<TextView>(R.id.btn_change_email).setOnClickListener { comingSoon() }
         findViewById<MaterialButton>(R.id.btn_save_changes).setOnClickListener { comingSoon() }
+        findViewById<MaterialButton>(R.id.btn_logout).setOnClickListener { confirmLogout() }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.account.collect { render(it) }
+                launch { viewModel.account.collect { render(it) } }
+                launch {
+                    viewModel.signedOut.collect {
+                        startActivity(
+                            Intent(this@ProfileActivity, LoginActivity::class.java)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                        )
+                    }
+                }
             }
         }
+    }
+
+    private fun confirmLogout() {
+        AlertDialog.Builder(this)
+            .setTitle("Log out?")
+            .setMessage("You'll stay signed out until you log in again. Local data stays on this device.")
+            .setPositiveButton("Log out") { _, _ -> viewModel.onLogout() }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun render(account: AccountUi) {

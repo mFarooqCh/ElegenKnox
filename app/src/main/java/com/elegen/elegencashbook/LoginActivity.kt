@@ -1,5 +1,6 @@
 package com.elegen.elegencashbook
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.TextView
@@ -56,7 +57,18 @@ class LoginActivity : AppCompatActivity() {
         btnGuest.setOnClickListener { viewModel.onEvent(LoginUiEvent.ContinueAsGuest) }
 
         fun render(state: LoginUiState) {
-            if (state.done) { finish(); return }
+            if (state.done) {
+                // Don't rely on finish() falling back to an Activity underneath — after a logout,
+                // ProfileActivity relaunches this screen with NEW_TASK|CLEAR_TASK, making it the
+                // task's only activity. finish() then empties the task and Android drops to Home
+                // instead of the app (real on-device bug). Always land on MainActivity explicitly.
+                startActivity(
+                    Intent(this, MainActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                )
+                finish()
+                return
+            }
 
             val registering = state.mode == AuthMode.REGISTER
             title.text = if (registering) "Create your account" else "Welcome back"

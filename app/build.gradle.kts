@@ -107,6 +107,8 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     // P3: auth + encrypted session storage (spec §2, §9)
     implementation(libs.supabase.auth)
+    // P7: foreground live updates while sharing (spec §6.4/§7 P7)
+    implementation(libs.supabase.realtime)
     implementation(libs.ktor.client.okhttp)
     implementation(libs.tink)
     testImplementation(libs.junit)

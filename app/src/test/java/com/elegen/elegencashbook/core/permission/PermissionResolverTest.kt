@@ -82,6 +82,26 @@ class PermissionResolverTest {
     }
 
     @Test
+    fun `scoped VIEWER without an ALLOW grant on this book is denied (real bug - share_book creates a scoped VIEWER)`() {
+        val result = PermissionResolver.effective(
+            "viewer-uid", bizBook,
+            membership = PermissionMembership(BusinessRole.VIEWER, bookScoped = true),
+            grant = null,
+        )
+        assertEquals(emptySet<Permission>(), result)
+    }
+
+    @Test
+    fun `scoped VIEWER with an ALLOW grant on this book gets BOOK_VIEW only`() {
+        val result = PermissionResolver.effective(
+            "viewer-uid", bizBook,
+            membership = PermissionMembership(BusinessRole.VIEWER, bookScoped = true),
+            grant = PermissionGrant(GrantAccess.ALLOW, permsOverride = null),
+        )
+        assertEquals(setOf(Permission.BOOK_VIEW), result)
+    }
+
+    @Test
     fun `per-book perms_override replaces role defaults entirely`() {
         val custom = setOf(Permission.BOOK_VIEW, Permission.TX_ADD)
         val result = PermissionResolver.effective(

@@ -10,6 +10,7 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.realtime.Realtime
 import javax.inject.Singleton
 
 /**
@@ -53,6 +54,7 @@ object SupabaseModule {
                     host = AUTH_DEEP_LINK_HOST
                 }
                 install(Postgrest) // P4 outbox push target; RLS + user JWT gate every row (spec §6.3, §8.6)
+                install(Realtime) // P7 foreground live updates on the active business (spec §6.4)
             }
             SupabaseClientHolder(client)
         } catch (e: Exception) {

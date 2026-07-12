@@ -173,22 +173,22 @@
 **Goal:** the user-facing sharing feature. Invite by email/phone, roles, per-book custom perms, viewer hiding, live updates.
 
 **Checklist**
-- [ ] New layouts: members list + invite sheet (email/phone field, role picker, per-book perms/scope editor) — reuse design language of existing sheets.
-- [ ] `feature/members` + `feature/sharing` ViewModels calling RPC use cases (`InviteToBusiness`, `ShareBook`, `SetBookGrant`, `UpdateMemberRole`, `RevokeMember`, `RevokeBookGrant`, `ResolvePermissions`).
-- [ ] `USER_NOT_REGISTERED` → friendly message ("must register first") per spec §8.4.
-- [ ] Pull path includes shared businesses/books (RLS already filters); business switcher (`bottom_sheet_business`) lists shared businesses too.
-- [ ] Supabase Realtime subscription on active business (foreground) → merge via resolver (spec §6.4).
-- [ ] UI capability gating live: VIEWER sees no add/edit buttons; ADMIN without `TX_DELETE` on a book sees no delete; DENY-hidden books absent from lists.
-- [ ] Sharing requires online (RPC): clear offline error, no fake success.
+- [x] New layouts: members list + invite sheet (email/phone field, role picker, per-book perms/scope editor) — reuse design language of existing sheets. Business switcher additionally redesigned (2026-07-12) to group "Your business" vs "Shared with you" with a colored role badge — real usability gap found via on-device testing (couldn't tell owned from shared businesses apart).
+- [x] `feature/members` + `feature/sharing` ViewModels calling RPC use cases (`InviteToBusiness`, `ShareBook`, `SetBookGrant`, `UpdateMemberRole`, `RevokeMember`, `RevokeBookGrant`, `ResolvePermissions`).
+- [x] `USER_NOT_REGISTERED` → friendly message ("must register first") per spec §8.4.
+- [x] Pull path includes shared businesses/books (RLS already filters); business switcher (`bottom_sheet_business`) lists shared businesses too.
+- [x] Supabase Realtime subscription on active business (foreground) → merge via resolver (spec §6.4). Code done; live foreground-latency not yet confirmed on two real devices.
+- [x] UI capability gating live: VIEWER sees no add/edit buttons; ADMIN without `TX_DELETE` on a book sees no delete; DENY-hidden books absent from lists. This item was actually broken until real on-device testing 2026-07-12 found it: `BookRepositoryImpl`/`TransactionRepositoryImpl` had zero RBAC-aware checks (crash on Duplicate, silent no-op on Rename, unrestricted VIEWER writes), and `observeBooksWithBalance` never filtered per-book at all (a book-scoped member saw every book in the business, not just the shared one) — both fixed, see handoff_notes.md.
+- [x] Sharing requires online (RPC): clear offline error, no fake success.
 
-**Proof Gate P7** (two accounts, two devices/emulators)
-- [ ] A invites B (by email) as ADMIN scoped to book X with `TX_ADD+TX_EDIT` only → B sees only X, can add/edit, **cannot delete** (button absent AND server rejects forced attempt).
-- [ ] A invites C as VIEWER with book Y denied → C sees all books except Y, read-only everywhere.
-- [ ] B adds entry → appears on A (Realtime while foreground; worker pull when backgrounded).
-- [ ] Invite unknown email → "must register first".
-- [ ] Revoke B → B loses access on next sync; B's local copy of A's data cleaned.
-- [ ] Demote last owner → rejected with message.
-- [ ] **Regression:** P0–P6 proofs pass (esp. offline single-user flows).
+**Proof Gate P7** (two accounts, two devices/emulators) — real two-account testing started 2026-07-12, found and fixed 10 real bugs beyond the original checklist (see handoff_notes.md §1 P7 row + the `project_p7_upsert_rls_deadlock` memory). Still open:
+- [x] A shares one book as VIEWER → B sees only that book (not the whole business) — confirmed after fixing `share_book`'s missing membership row + `effective_perms`'s ADMIN-only scoping bug + `observeBooksWithBalance`'s missing per-book filter (all real bugs, all fixed 2026-07-12).
+- [ ] A invites C as VIEWER with book Y denied → C sees all books except Y, read-only everywhere — not yet run as an explicit test.
+- [ ] B adds entry → appears on A (Realtime while foreground; worker pull when backgrounded) — not yet confirmed for latency.
+- [x] Invite unknown email → "must register first" — implemented, pgTAP-covered.
+- [ ] **Revoke B → B loses access on next sync; B's local copy of A's data cleaned.** Known gap, NOT built: sync pulls are additive-only, nothing currently removes a locally-cached row once access is revoked/corrected server-side — a device that already pulled it keeps showing it until a full resync (sign-out-and-remove-data + relogin). Needs a dedicated fix if this ships.
+- [ ] Demote last owner → rejected with message — implemented + pgTAP-covered, not re-confirmed on a real device this pass.
+- [ ] **Regression:** P0–P6 proofs pass (esp. offline single-user flows) — not formally re-run end-to-end this session.
 
 ---
 

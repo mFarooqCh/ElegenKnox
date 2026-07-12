@@ -26,6 +26,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.elegen.elegencashbook.core.ui.setPrimaryEnabled
 import com.elegen.elegencashbook.data.remote.supabase.AuthDeepLinkHandler
+import com.elegen.elegencashbook.data.remote.supabase.RealtimeSync
 import com.elegen.elegencashbook.domain.model.HistoryEntityType
 import com.elegen.elegencashbook.domain.usecase.GetEntityHistory
 import com.elegen.elegencashbook.feature.history.toHistoryItem
@@ -57,6 +58,9 @@ class MainActivity : AppCompatActivity() {
 
     @Inject lateinit var authDeepLinkHandler: AuthDeepLinkHandler
     @Inject lateinit var getEntityHistory: GetEntityHistory
+    @Inject lateinit var realtimeSync: RealtimeSync
+
+    private var realtimeBusinessId: String? = null
 
     private val historyDateFmt = SimpleDateFormat("d MMM yyyy, h:mm a", Locale.getDefault())
 
@@ -67,7 +71,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var emptyBooksCard: View
 
     private var uiState = MainUiState()
-    private var businessSheetAdapter: BusinessAdapter? = null
+    private var businessSheetOwnedAdapter: BusinessAdapter? = null
+    private var businessSheetSharedAdapter: BusinessAdapter? = null
+    private var businessSheetSharedLabel: TextView? = null
+    private var businessSheetSharedList: RecyclerView? = null
     private var loginPromptShown = false
     private var tipDismissed = false
 
@@ -96,9 +103,17 @@ class MainActivity : AppCompatActivity() {
         booksRecyclerView.layoutManager = LinearLayoutManager(this)
         booksRecyclerView.adapter = booksAdapter
 
-        // Top-bar icon: book-collaboration stub (P6). Account/login lives only behind "Settings".
         findViewById<ImageButton>(R.id.add_members_button).setOnClickListener {
-            Toast.makeText(this, "Sharing books with members is coming soon", Toast.LENGTH_SHORT).show()
+            val business = uiState.activeBusiness
+            if (business == null) {
+                Toast.makeText(this, "Add a business first", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            startActivity(
+                Intent(this, MembersActivity::class.java)
+                    .putExtra("business_id", business.id)
+                    .putExtra("business_name", business.name)
+            )
         }
 
         findViewById<com.google.android.material.bottomnavigation.BottomNavigationView>(R.id.bottom_navigation)
@@ -139,9 +154,24 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.state.collect { render(it) }
+                viewModel.state.collect { state ->
+                    render(state)
+                    // Foreground-only live updates (spec §6.4 P7) — restart only on an actual
+                    // business switch, not on every unrelated state emission (book list, etc.).
+                    val bizId = state.activeBusiness?.id
+                    if (bizId != realtimeBusinessId) {
+                        realtimeBusinessId = bizId
+                        if (bizId != null) realtimeSync.start(bizId) else realtimeSync.stop()
+                    }
+                }
             }
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        realtimeSync.stop()
+        realtimeBusinessId = null
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -173,7 +203,11 @@ class MainActivity : AppCompatActivity() {
         uiState = state
         businessTitle.text = state.activeBusiness?.name ?: "Add a business"
         booksAdapter.submit(state.books)
-        businessSheetAdapter?.submit(state.businesses)
+        businessSheetOwnedAdapter?.submit(state.businesses.filter { it.isOwner })
+        val shared = state.businesses.filterNot { it.isOwner }
+        businessSheetSharedAdapter?.submit(shared)
+        businessSheetSharedLabel?.visibility = if (shared.isEmpty()) View.GONE else View.VISIBLE
+        businessSheetSharedList?.visibility = if (shared.isEmpty()) View.GONE else View.VISIBLE
 
         if (state.books.isEmpty()) {
             tipCard.visibility = View.GONE
@@ -186,6 +220,11 @@ class MainActivity : AppCompatActivity() {
         if (state.promptLogin && !loginPromptShown) {
             loginPromptShown = true
             startActivity(Intent(this, LoginActivity::class.java))
+        }
+
+        state.errorMessage?.let {
+            Toast.makeText(this, it, Toast.LENGTH_LONG).show()
+            viewModel.onEvent(MainUiEvent.ErrorShown)
         }
     }
 
@@ -202,27 +241,49 @@ class MainActivity : AppCompatActivity() {
     private fun showBusinessSheet() {
         val dialog = BottomSheetDialog(this)
         val view = layoutInflater.inflate(R.layout.bottom_sheet_business, null)
-        val businessList = view.findViewById<RecyclerView>(R.id.business_list)
+        val ownedList = view.findViewById<RecyclerView>(R.id.business_list_owned)
+        val sharedList = view.findViewById<RecyclerView>(R.id.business_list_shared)
+        val sharedLabel = view.findViewById<TextView>(R.id.label_shared_businesses)
         val closeButton = view.findViewById<ImageButton>(R.id.close_business_sheet)
         val addBusinessButton = view.findViewById<MaterialButton>(R.id.add_business_button)
 
-        businessList.layoutManager = LinearLayoutManager(this)
+        ownedList.layoutManager = LinearLayoutManager(this)
+        sharedList.layoutManager = LinearLayoutManager(this)
         addBusinessButton.setPrimaryEnabled(true)
 
-        val adapter = BusinessAdapter(
-            onSelected = { business ->
-                viewModel.onEvent(MainUiEvent.SelectBusiness(business.id))
-                dialog.dismiss()
-            },
-            onSettings = { business ->
-                dialog.dismiss()
-                startActivity(Intent(this, BusinessSettingsActivity::class.java))
-            },
-        )
-        adapter.submit(uiState.businesses)
-        businessList.adapter = adapter
-        businessSheetAdapter = adapter
-        dialog.setOnDismissListener { businessSheetAdapter = null }
+        fun onSelected(business: BusinessItem) {
+            viewModel.onEvent(MainUiEvent.SelectBusiness(business.id))
+            dialog.dismiss()
+        }
+        fun onSettings(business: BusinessItem) {
+            dialog.dismiss()
+            startActivity(
+                Intent(this, BusinessSettingsActivity::class.java)
+                    .putExtra("business_id", business.id)
+                    .putExtra("business_name", business.name)
+            )
+        }
+
+        val ownedAdapter = BusinessAdapter(::onSelected, ::onSettings)
+        val sharedAdapter = BusinessAdapter(::onSelected, ::onSettings)
+        ownedAdapter.submit(uiState.businesses.filter { it.isOwner })
+        val shared = uiState.businesses.filterNot { it.isOwner }
+        sharedAdapter.submit(shared)
+        sharedLabel.visibility = if (shared.isEmpty()) View.GONE else View.VISIBLE
+        sharedList.visibility = if (shared.isEmpty()) View.GONE else View.VISIBLE
+
+        ownedList.adapter = ownedAdapter
+        sharedList.adapter = sharedAdapter
+        businessSheetOwnedAdapter = ownedAdapter
+        businessSheetSharedAdapter = sharedAdapter
+        businessSheetSharedLabel = sharedLabel
+        businessSheetSharedList = sharedList
+        dialog.setOnDismissListener {
+            businessSheetOwnedAdapter = null
+            businessSheetSharedAdapter = null
+            businessSheetSharedLabel = null
+            businessSheetSharedList = null
+        }
 
         closeButton.setOnClickListener { dialog.dismiss() }
         addBusinessButton.setOnClickListener {
@@ -322,7 +383,14 @@ class MainActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: BusinessViewHolder, position: Int) {
             val business = items[position]
             holder.name.text = business.name
-            holder.role.text = business.roleLabel
+            holder.role.text = business.roleLabel.uppercase()
+            val (roleBg, roleText) = when (business.roleLabel) {
+                "Owner" -> R.color.icon_chip_bg to R.color.brand
+                "Admin" -> R.color.success_green_bg to R.color.success_green
+                else -> R.color.divider_light to R.color.text_muted
+            }
+            holder.rolePill.backgroundTintList = ContextCompat.getColorStateList(this@MainActivity, roleBg)
+            holder.role.setTextColor(ContextCompat.getColor(this@MainActivity, roleText))
             holder.count.text = "${business.bookCount} ${if (business.bookCount == 1) "book" else "books"}"
             if (business.isActive) {
                 holder.selected.setImageResource(R.drawable.ic_check_circle)
@@ -340,6 +408,7 @@ class MainActivity : AppCompatActivity() {
         private inner class BusinessViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val name: TextView = view.findViewById(R.id.business_name)
             val role: TextView = view.findViewById(R.id.business_role)
+            val rolePill: View = view.findViewById(R.id.business_role_pill)
             val count: TextView = view.findViewById(R.id.business_count)
             val selected: ImageView = view.findViewById(R.id.selected_indicator)
 
@@ -354,6 +423,14 @@ class MainActivity : AppCompatActivity() {
                     val position = adapterPosition
                     if (position != RecyclerView.NO_POSITION) {
                         onSettings(items[position])
+                    }
+                }
+                // Truncated name (maxWidth in item_business.xml) — tap it to see the full name
+                // instead of switching business, since that's what the row itself already does.
+                name.setOnClickListener {
+                    val position = adapterPosition
+                    if (position != RecyclerView.NO_POSITION) {
+                        Toast.makeText(this@MainActivity, items[position].name, Toast.LENGTH_LONG).show()
                     }
                 }
             }
@@ -382,7 +459,12 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "\"${book.name}\" duplicated", Toast.LENGTH_SHORT).show()
         }
         action(R.id.action_add_members) {
-            Toast.makeText(this, "Sharing books with members is coming soon", Toast.LENGTH_SHORT).show()
+            startActivity(
+                Intent(this, BookAccessActivity::class.java)
+                    .putExtra("book_id", book.id)
+                    .putExtra("book_name", book.name)
+                    .putExtra("business_id", uiState.activeBusiness?.id)
+            )
         }
         action(R.id.action_move) { promptMoveBook(book) }
         action(R.id.action_history) {
