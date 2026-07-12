@@ -95,6 +95,10 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    // P7 fix: ProcessLifecycleOwner drives Realtime start/stop off true app foreground/background
+    // instead of a single Activity's onStop (see RealtimeSync) — real bug found on-device.
+    implementation(libs.androidx.lifecycle.process)
+    implementation(libs.androidx.swiperefreshlayout)
     // P2: offline-first persistence (spec §7) + DI + local prefs
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

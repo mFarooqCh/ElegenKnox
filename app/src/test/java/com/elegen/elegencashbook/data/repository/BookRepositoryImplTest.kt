@@ -40,6 +40,7 @@ private object NoopScheduler : SyncScheduler {
     override fun requestPull() = Unit
     override fun schedulePeriodicPull() = Unit
     override fun scheduleCleanup() = Unit
+    override fun observePullActive() = kotlinx.coroutines.flow.flowOf(false)
 }
 
 /** Delegates everything to [real] except upsert, which fails on the Nth+1 call — simulates a crash mid-copy. */

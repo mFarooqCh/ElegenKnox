@@ -22,6 +22,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.elegen.elegencashbook.core.permission.Permission
 import com.elegen.elegencashbook.core.ui.setPrimaryEnabled
 import com.elegen.elegencashbook.feature.book.BookDetailsUiEvent
@@ -54,6 +55,7 @@ class BookDetailsActivity : AppCompatActivity() {
     private lateinit var btnCashIn: MaterialButton
     private lateinit var btnCashOut: MaterialButton
     private lateinit var toolbarAddMember: ImageButton
+    private lateinit var entriesRefresh: SwipeRefreshLayout
     private val entryAdapter = EntryAdapter()
 
     private var uiState = BookDetailsUiState()
@@ -88,6 +90,13 @@ class BookDetailsActivity : AppCompatActivity() {
         entryListContainer = findViewById(R.id.entry_list_container)
         entryListContainer.layoutManager = LinearLayoutManager(this)
         entryListContainer.adapter = entryAdapter
+
+        // Swipe down to force an immediate pull instead of waiting on Realtime/the periodic
+        // worker — real bug found on-device: a shared viewer's book stayed stale until the app
+        // was fully closed and reopened.
+        entriesRefresh = findViewById(R.id.entries_refresh)
+        entriesRefresh.setColorSchemeResources(R.color.brand)
+        entriesRefresh.setOnRefreshListener { viewModel.onEvent(BookDetailsUiEvent.Refresh) }
 
         findViewById<TextView>(R.id.btn_view_reports).setOnClickListener {
             startActivity(Intent(this, GenerateReportActivity::class.java))
@@ -303,6 +312,7 @@ class BookDetailsActivity : AppCompatActivity() {
         btnCashIn.isEnabled = Permission.TX_ADD in perms
         btnCashOut.isEnabled = Permission.TX_ADD in perms
         toolbarAddMember.visibility = if (Permission.MEMBER_MANAGE in perms) View.VISIBLE else View.GONE
+        entriesRefresh.isRefreshing = state.isRefreshing
 
         state.errorMessage?.let {
             Toast.makeText(this, it, Toast.LENGTH_LONG).show()

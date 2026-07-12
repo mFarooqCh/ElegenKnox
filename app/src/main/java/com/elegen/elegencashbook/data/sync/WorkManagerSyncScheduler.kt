@@ -8,12 +8,15 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.elegen.elegencashbook.domain.repository.SyncScheduler
 import com.elegen.elegencashbook.worker.CleanupWorker
 import com.elegen.elegencashbook.worker.SyncPullWorker
 import com.elegen.elegencashbook.worker.SyncPushWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -58,6 +61,11 @@ class WorkManagerSyncScheduler @Inject constructor(
         WorkManager.getInstance(context)
             .enqueueUniquePeriodicWork(PERIODIC_PULL_WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request)
     }
+
+    /** Drives pull-to-refresh spinners (spec §6.4 latency fix) — true while the one-off requestPull() work is enqueued/running, false once it settles. */
+    override fun observePullActive(): Flow<Boolean> =
+        WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(PULL_WORK_NAME)
+            .map { infos -> infos.any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.RUNNING } }
 
     override fun scheduleCleanup() {
         val request = PeriodicWorkRequestBuilder<CleanupWorker>(1, TimeUnit.DAYS)

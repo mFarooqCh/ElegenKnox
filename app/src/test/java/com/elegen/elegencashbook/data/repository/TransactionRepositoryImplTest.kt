@@ -61,6 +61,7 @@ class TransactionRepositoryImplTest {
         override fun requestPull() = Unit
         override fun schedulePeriodicPull() = Unit
         override fun scheduleCleanup() = Unit
+        override fun observePullActive() = kotlinx.coroutines.flow.flowOf(false)
     }
 
     private fun envelope() = SyncEnvelope(1, 1L, "dev", null, SyncEnvelope.STATE_PENDING)

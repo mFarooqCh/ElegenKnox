@@ -181,4 +181,7 @@ interface SyncScheduler {
 
     /** Periodic tombstone purge (spec §6.6); call once at process start. */
     fun scheduleCleanup()
+
+    /** True while a requested pull is enqueued/running — drives pull-to-refresh spinners. */
+    fun observePullActive(): Flow<Boolean>
 }

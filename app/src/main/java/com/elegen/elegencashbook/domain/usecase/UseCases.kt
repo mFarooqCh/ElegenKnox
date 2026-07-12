@@ -17,6 +17,7 @@ import com.elegen.elegencashbook.domain.repository.BusinessRepository
 import com.elegen.elegencashbook.domain.repository.HistoryRepository
 import com.elegen.elegencashbook.domain.repository.PermissionRepository
 import com.elegen.elegencashbook.domain.repository.SettingsRepository
+import com.elegen.elegencashbook.domain.repository.SyncScheduler
 import com.elegen.elegencashbook.domain.repository.TransactionRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -45,6 +46,16 @@ class SwitchBusiness @Inject constructor(private val settings: SettingsRepositor
 
 class ObserveActiveBusinessId @Inject constructor(private val settings: SettingsRepository) {
     operator fun invoke(): Flow<String?> = settings.activeBusinessId
+}
+
+/** Pull-to-refresh (spec §6.4 latency fix): forces an immediate delta pull instead of waiting on
+ * Realtime or the 15-min periodic worker. */
+class RefreshNow @Inject constructor(private val scheduler: SyncScheduler) {
+    operator fun invoke() = scheduler.requestPull()
+}
+
+class ObservePullActive @Inject constructor(private val scheduler: SyncScheduler) {
+    operator fun invoke(): Flow<Boolean> = scheduler.observePullActive()
 }
 
 class CreateBook @Inject constructor(private val repo: BookRepository) {

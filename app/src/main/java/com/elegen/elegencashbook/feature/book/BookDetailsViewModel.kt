@@ -20,6 +20,8 @@ import com.elegen.elegencashbook.domain.usecase.GetEntityHistory
 import com.elegen.elegencashbook.domain.usecase.ListMyBusinesses
 import com.elegen.elegencashbook.domain.usecase.MoveBook
 import com.elegen.elegencashbook.domain.usecase.ObserveBookEntries
+import com.elegen.elegencashbook.domain.usecase.ObservePullActive
+import com.elegen.elegencashbook.domain.usecase.RefreshNow
 import com.elegen.elegencashbook.domain.usecase.RenameBook
 import com.elegen.elegencashbook.domain.usecase.RestoreBook
 import com.elegen.elegencashbook.domain.usecase.RestoreTransaction
@@ -67,6 +69,8 @@ data class BookDetailsUiState(
      * never trust this alone for security.
      */
     val permissions: Set<Permission> = Permission.entries.toSet(),
+    /** Drives the swipe-to-refresh spinner (spec §6.4 latency fix) — true while a requested pull is in flight. */
+    val isRefreshing: Boolean = false,
     val errorMessage: String? = null,
 )
 
@@ -86,6 +90,7 @@ sealed interface BookDetailsUiEvent {
     data object DeleteBook : BookDetailsUiEvent
     data object RestoreBook : BookDetailsUiEvent
     data class MoveBook(val targetBusinessId: String) : BookDetailsUiEvent
+    data object Refresh : BookDetailsUiEvent
     data object ErrorShown : BookDetailsUiEvent
 }
 
@@ -96,6 +101,8 @@ class BookDetailsViewModel @Inject constructor(
     listMyBusinesses: ListMyBusinesses,
     getEntityHistory: GetEntityHistory,
     getEffectivePermissions: GetEffectivePermissions,
+    observePullActive: ObservePullActive,
+    private val refreshNow: RefreshNow,
     private val getBalance: GetBalance,
     private val addTransaction: AddTransaction,
     private val deleteTransaction: DeleteTransaction,
@@ -121,9 +128,19 @@ class BookDetailsViewModel @Inject constructor(
         listMyBusinesses(),
         getEntityHistory(HistoryEntityType.BOOK, bookId),
         getEffectivePermissions(bookId),
+        observePullActive(),
         _errorMessage,
-    ) { entries, businesses, history, permissions, error -> buildState(entries, businesses, history, permissions, error) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BookDetailsUiState())
+    ) { values ->
+        @Suppress("UNCHECKED_CAST")
+        buildState(
+            entries = values[0] as List<Transaction>,
+            businesses = values[1] as List<BusinessOverview>,
+            history = values[2] as List<HistoryEntry>,
+            permissions = values[3] as Set<Permission>,
+            isRefreshing = values[4] as Boolean,
+            errorMessage = values[5] as String?,
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BookDetailsUiState())
 
     /** Local writes enforce real capabilities (spec §8.3) now, not just raw ownership — a denied
      * mutation must surface here instead of silently no-op'ing or crashing the app uncaught. */
@@ -151,6 +168,7 @@ class BookDetailsViewModel @Inject constructor(
             BookDetailsUiEvent.DeleteBook -> runGuarded { deleteBook(bookId) }
             BookDetailsUiEvent.RestoreBook -> runGuarded { restoreBook(bookId) }
             is BookDetailsUiEvent.MoveBook -> runGuarded { moveBook(bookId, event.targetBusinessId) }
+            BookDetailsUiEvent.Refresh -> refreshNow()
             BookDetailsUiEvent.ErrorShown -> _errorMessage.value = null
         }
     }
@@ -161,6 +179,7 @@ class BookDetailsViewModel @Inject constructor(
         businesses: List<BusinessOverview>,
         history: List<HistoryEntry>,
         permissions: Set<Permission>,
+        isRefreshing: Boolean,
         errorMessage: String?,
     ): BookDetailsUiState {
         val summary = getBalance(entries)
@@ -191,6 +210,7 @@ class BookDetailsViewModel @Inject constructor(
                 .map { BusinessOption(it.business.id, it.business.name, it.bookCount) },
             historyItems = history.map { it.toHistoryItem(historyDateFmt) },
             permissions = permissions,
+            isRefreshing = isRefreshing,
             errorMessage = errorMessage,
         )
     }

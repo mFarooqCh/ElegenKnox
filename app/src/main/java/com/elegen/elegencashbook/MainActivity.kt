@@ -60,8 +60,6 @@ class MainActivity : AppCompatActivity() {
     @Inject lateinit var getEntityHistory: GetEntityHistory
     @Inject lateinit var realtimeSync: RealtimeSync
 
-    private var realtimeBusinessId: String? = null
-
     private val historyDateFmt = SimpleDateFormat("d MMM yyyy, h:mm a", Locale.getDefault())
 
     private lateinit var booksRecyclerView: RecyclerView
@@ -156,22 +154,15 @@ class MainActivity : AppCompatActivity() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.state.collect { state ->
                     render(state)
-                    // Foreground-only live updates (spec §6.4 P7) — restart only on an actual
-                    // business switch, not on every unrelated state emission (book list, etc.).
-                    val bizId = state.activeBusiness?.id
-                    if (bizId != realtimeBusinessId) {
-                        realtimeBusinessId = bizId
-                        if (bizId != null) realtimeSync.start(bizId) else realtimeSync.stop()
-                    }
+                    // Foreground-only live updates (spec §6.4 P7). setActiveBusiness no-ops on a
+                    // repeat call and RealtimeSync itself tracks true app foreground/background
+                    // via ProcessLifecycleOwner — not this Activity's onStop, which used to kill
+                    // the subscription the moment any other Activity (e.g. BookDetailsActivity)
+                    // came to the front, even with the app still fully foregrounded.
+                    realtimeSync.setActiveBusiness(state.activeBusiness?.id)
                 }
             }
         }
-    }
-
-    override fun onStop() {
-        super.onStop()
-        realtimeSync.stop()
-        realtimeBusinessId = null
     }
 
     override fun onNewIntent(intent: Intent) {
