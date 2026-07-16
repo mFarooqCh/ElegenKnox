@@ -27,6 +27,9 @@ interface BusinessRepository {
     /** All non-deleted businesses with live book counts, oldest first. */
     fun observeBusinesses(): Flow<List<BusinessOverview>>
     suspend fun create(name: String): Business
+    suspend fun rename(businessId: String, name: String)
+    /** Soft delete: sets tombstone, business (and its books, on the next observe) disappears from observe flows (spec §6.6). */
+    suspend fun softDelete(businessId: String)
 }
 
 interface BookRepository {

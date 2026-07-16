@@ -49,6 +49,36 @@ interface BusinessDao {
     @Query("SELECT * FROM businesses WHERE id = :id")
     suspend fun getById(id: String): BusinessEntity?
 
+    /** One-shot snapshot of [observeWithBookCount]'s visibility predicate, minus the book-count join — used by the access-revocation reconciliation pass (spec §6.4). */
+    @Query(
+        """
+        SELECT * FROM businesses b
+        WHERE b.deletedAt IS NULL
+          AND (b.ownerUid = :uid OR EXISTS (
+            SELECT 1 FROM business_members m
+            WHERE m.businessId = b.id AND m.userUid = :uid AND m.status = 'ACTIVE'
+          ))
+        """
+    )
+    suspend fun getAllVisible(uid: String): List<BusinessEntity>
+
+    /**
+     * Local-only tombstone for a business this identity can no longer see server-side (revoked
+     * access) — deliberately does NOT touch syncState/version, so the outbox never mistakes this
+     * for a real delete to push. Real deletes go through the normal write path; this just hides a
+     * row the server stopped returning.
+     */
+    @Query("UPDATE businesses SET deletedAt = :now WHERE id = :id")
+    suspend fun markAccessLost(id: String, now: Long)
+
+    /** Local access-lost tombstones (not real deletes) not owned by this identity — candidates for the regained-access repair pass (spec §6.4). */
+    @Query("SELECT * FROM businesses WHERE deletedAt IS NOT NULL AND ownerUid != :uid")
+    suspend fun getAllTombstonedNotOwned(uid: String): List<BusinessEntity>
+
+    /** Clears a local-only access-lost tombstone (counterpart to [markAccessLost]) — access was regained. */
+    @Query("UPDATE businesses SET deletedAt = NULL WHERE id = :id")
+    suspend fun clearAccessLost(id: String)
+
     /** Guest → uid on login: reassign ownership and re-queue for sync (spec §8.2 claim). */
     @Query("UPDATE businesses SET ownerUid = :uid, updatedAt = :now, syncState = 'PENDING' WHERE ownerUid = :guest")
     suspend fun claimOwner(guest: String, uid: String, now: Long)
@@ -101,6 +131,22 @@ interface BookDao {
     /** Reactive single-book lookup — permission resolution needs to react to businessId/ownerUid pulls. */
     @Query("SELECT * FROM books WHERE id = :id")
     fun observeById(id: String): Flow<BookEntity?>
+
+    /** Non-deleted local books in any of the given (still-accessible) businesses — access-revocation reconciliation pass (spec §6.4). */
+    @Query("SELECT * FROM books WHERE businessId IN (:businessIds) AND deletedAt IS NULL")
+    suspend fun getAllForBusinesses(businessIds: List<String>): List<BookEntity>
+
+    /** Local-only tombstone, see [BusinessDao.markAccessLost] — never touches syncState/version. */
+    @Query("UPDATE books SET deletedAt = :now WHERE id = :id")
+    suspend fun markAccessLost(id: String, now: Long)
+
+    /** See [BusinessDao.getAllTombstonedNotOwned] — same regained-access repair, for books. */
+    @Query("SELECT * FROM books WHERE deletedAt IS NOT NULL AND ownerUid != :uid")
+    suspend fun getAllTombstonedNotOwned(uid: String): List<BookEntity>
+
+    /** Clears a local-only access-lost tombstone (counterpart to [markAccessLost]) — access was regained. */
+    @Query("UPDATE books SET deletedAt = NULL WHERE id = :id")
+    suspend fun clearAccessLost(id: String)
 
     @Query("UPDATE books SET ownerUid = :uid, updatedAt = :now, syncState = 'PENDING' WHERE ownerUid = :guest")
     suspend fun claimOwner(guest: String, uid: String, now: Long)
@@ -165,7 +211,7 @@ interface SyncQueueDao {
     @Query(
         """
         SELECT * FROM sync_queue WHERE status = 'PENDING'
-        ORDER BY CASE entityType WHEN 'BUSINESS' THEN 0 WHEN 'BOOK' THEN 1 ELSE 2 END, id ASC
+        ORDER BY CASE entityType WHEN 'BUSINESS' THEN 0 WHEN 'BOOK' THEN 1 WHEN 'TRANSACTION' THEN 2 ELSE 3 END, id ASC
         """
     )
     suspend fun pending(): List<SyncQueueEntity>
@@ -183,11 +229,16 @@ interface SyncQueueDao {
 
 @Dao
 interface HistoryDao {
-    @Insert
+    /** IGNORE, not ABORT: a pulled echo of a row this device already created (same id) must not crash the pull. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(row: HistoryEntity)
 
     @Query("SELECT * FROM history_log WHERE entityType = :entityType AND entityId = :entityId ORDER BY at DESC")
     fun observeForEntity(entityType: String, entityId: String): Flow<List<HistoryEntity>>
+
+    /** Outbox push re-read (spec §6.3 pattern) — history rows carry no envelope, so no markSynced counterpart. */
+    @Query("SELECT * FROM history_log WHERE id = :id")
+    suspend fun getById(id: String): HistoryEntity?
 }
 
 @Dao

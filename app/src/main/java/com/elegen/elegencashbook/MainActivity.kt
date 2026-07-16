@@ -24,6 +24,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.elegen.elegencashbook.core.ui.setPrimaryEnabled
 import com.elegen.elegencashbook.data.remote.supabase.AuthDeepLinkHandler
 import com.elegen.elegencashbook.data.remote.supabase.RealtimeSync
@@ -67,12 +68,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var businessTitle: TextView
     private lateinit var tipCard: View
     private lateinit var emptyBooksCard: View
+    private lateinit var mainRefresh: SwipeRefreshLayout
 
     private var uiState = MainUiState()
     private var businessSheetOwnedAdapter: BusinessAdapter? = null
     private var businessSheetSharedAdapter: BusinessAdapter? = null
     private var businessSheetSharedLabel: TextView? = null
     private var businessSheetSharedList: RecyclerView? = null
+    private var businessSheetRefresh: SwipeRefreshLayout? = null
     private var loginPromptShown = false
     private var tipDismissed = false
 
@@ -100,6 +103,10 @@ class MainActivity : AppCompatActivity() {
         booksAdapter = BookAdapter()
         booksRecyclerView.layoutManager = LinearLayoutManager(this)
         booksRecyclerView.adapter = booksAdapter
+
+        mainRefresh = findViewById(R.id.main_refresh)
+        mainRefresh.setColorSchemeResources(R.color.brand)
+        mainRefresh.setOnRefreshListener { viewModel.onEvent(MainUiEvent.Refresh) }
 
         findViewById<ImageButton>(R.id.add_members_button).setOnClickListener {
             val business = uiState.activeBusiness
@@ -191,7 +198,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun render(state: MainUiState) {
+        val wasSyncing = uiState.isSyncing
         uiState = state
+        if (state.isSyncing && !wasSyncing) {
+            Toast.makeText(this, "Sync in progress…", Toast.LENGTH_SHORT).show()
+        } else if (!state.isSyncing && wasSyncing) {
+            Toast.makeText(this, "Sync complete", Toast.LENGTH_SHORT).show()
+        }
+        mainRefresh.isRefreshing = state.isSyncing
+        businessSheetRefresh?.isRefreshing = state.isSyncing
         businessTitle.text = state.activeBusiness?.name ?: "Add a business"
         booksAdapter.submit(state.books)
         businessSheetOwnedAdapter?.submit(state.businesses.filter { it.isOwner })
@@ -237,10 +252,15 @@ class MainActivity : AppCompatActivity() {
         val sharedLabel = view.findViewById<TextView>(R.id.label_shared_businesses)
         val closeButton = view.findViewById<ImageButton>(R.id.close_business_sheet)
         val addBusinessButton = view.findViewById<MaterialButton>(R.id.add_business_button)
+        val sheetRefresh = view.findViewById<SwipeRefreshLayout>(R.id.business_sheet_refresh)
 
         ownedList.layoutManager = LinearLayoutManager(this)
         sharedList.layoutManager = LinearLayoutManager(this)
         addBusinessButton.setPrimaryEnabled(true)
+        sheetRefresh.setColorSchemeResources(R.color.brand)
+        sheetRefresh.isRefreshing = uiState.isSyncing
+        sheetRefresh.setOnRefreshListener { viewModel.onEvent(MainUiEvent.Refresh) }
+        businessSheetRefresh = sheetRefresh
 
         fun onSelected(business: BusinessItem) {
             viewModel.onEvent(MainUiEvent.SelectBusiness(business.id))
@@ -274,6 +294,7 @@ class MainActivity : AppCompatActivity() {
             businessSheetSharedAdapter = null
             businessSheetSharedLabel = null
             businessSheetSharedList = null
+            businessSheetRefresh = null
         }
 
         closeButton.setOnClickListener { dialog.dismiss() }

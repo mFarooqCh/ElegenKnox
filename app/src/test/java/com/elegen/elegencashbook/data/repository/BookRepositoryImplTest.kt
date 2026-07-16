@@ -188,10 +188,11 @@ class BookRepositoryImplTest {
     fun `every mutation queues an outbox row atomically`() = runBlocking {
         seedBusinessAndBook()
         val r = repo()
-        r.create("biz", "New")          // 1 book create
-        r.rename("bk", "Renamed")       // 1 book update
-        // One outbox row per write; both committed alongside their entity.
-        assertEquals(2, db.syncQueueDao().pending().size)
+        r.create("biz", "New")          // 1 book create + 1 history row (CREATED), both queued
+        r.rename("bk", "Renamed")       // 1 book update + 1 history row (RENAMED), both queued
+        // History rows sync too now (P8, reused audit_log) — each mutation queues its entity row
+        // plus its own history row, atomically, alongside the entity.
+        assertEquals(4, db.syncQueueDao().pending().size)
     }
 
     @Test

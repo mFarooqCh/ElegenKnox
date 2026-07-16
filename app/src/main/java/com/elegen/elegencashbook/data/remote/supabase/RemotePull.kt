@@ -1,6 +1,8 @@
 package com.elegen.elegencashbook.data.remote.supabase
 
 import com.elegen.elegencashbook.core.logging.Logger
+import com.elegen.elegencashbook.data.identity.ActiveIdentity
+import com.elegen.elegencashbook.data.identity.IdentityManager
 import com.elegen.elegencashbook.data.local.dao.BookDao
 import com.elegen.elegencashbook.data.local.dao.BookGrantDao
 import com.elegen.elegencashbook.data.local.dao.BusinessDao
@@ -17,6 +19,7 @@ import com.elegen.elegencashbook.data.local.entity.TransactionEntity
 import com.elegen.elegencashbook.data.local.prefs.AppPreferences
 import com.elegen.elegencashbook.data.repository.buildChanges
 import com.elegen.elegencashbook.data.sync.ConflictResolver
+import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.serialization.json.JsonNull
@@ -51,6 +54,7 @@ class RemotePull @Inject constructor(
     private val bookGrantDao: BookGrantDao,
     private val prefs: AppPreferences,
     private val logger: Logger,
+    private val identity: ActiveIdentity,
 ) {
     val isConfigured: Boolean get() = holder.isConfigured
 
@@ -96,6 +100,78 @@ class RemotePull @Inject constructor(
         pullTable(TYPE_BOOK_GRANT, "book_grants") { row ->
             bookGrantDao.upsert(row.toBookGrantEntity(parseTimestamp(row.str("updated_at"))))
         }
+        // audit_log doubles as history_log's remote store (P8) — also holds RBAC rows
+        // (BUSINESS_MEMBER/BOOK_GRANT entity types with no book_id); only BOOK/TRANSACTION rows
+        // are edit-history. IGNORE-conflict insert means a device pulling its own pushed row back
+        // is a harmless no-op (keeps this device's own original `at`, not the server's push-time one).
+        pullTable(TYPE_HISTORY, "audit_log", cursorColumn = "at") { row ->
+            val entityType = row.str("entity_type")
+            if (entityType == HistoryEntity.TYPE_BOOK || entityType == HistoryEntity.TYPE_TRANSACTION) {
+                historyDao.insert(row.toHistoryEntity(parseTimestamp(row.str("at"))))
+            }
+        }
+        reconcileLostAccess(client)
+    }
+
+    /**
+     * Revocation-sync (spec §6.4 gap): a delta pull can only ADD/UPDATE rows the server still
+     * returns — it has no way to tell the client "you lost access to X", since once RLS excludes a
+     * business/book, it just silently stops appearing in every future delta pull (including the
+     * business_members/book_grants rows that would have told the client *why*). The only way to
+     * detect a revocation is to compare the FULL current visible set against what's cached
+     * locally. Real gap found and flagged during on-device testing 2026-07-12: a device that had
+     * already pulled a since-revoked business/book kept showing it forever, even after the server
+     * fix landed, until a full reinstall.
+     *
+     * Local-only tombstone (`markAccessLost`, never touches syncState/version) — this never
+     * pushes anything, it just hides a row the server stopped returning. Never touches a business
+     * this identity actually owns (`ownerUid == myUid`) — losing your OWN data to a reconciliation
+     * bug would be far worse than a stale row lingering an extra pull cycle.
+     *
+     * Also repairs the reverse case: regained access (e.g. a revoked member reactivated). A
+     * reactivated `business_members`/`book_grants` row doesn't touch the business/book's OWN
+     * `updated_at`, so the normal delta-pull cursor would never re-fetch it — real bug found
+     * on-device, a reactivated shared admin still didn't see the business after restart+refresh.
+     * `deleted_at` is fetched alongside each id specifically to tell "still hidden by a genuine
+     * remote delete" apart from "visible again, local tombstone is now stale" — `businesses`'/`books`'
+     * own SELECT RLS doesn't filter on deleted_at at all, so a genuinely self-deleted row is still
+     * selectable here too.
+     */
+    private suspend fun reconcileLostAccess(client: SupabaseClient) {
+        val myUid = identity.current()
+        if (myUid == IdentityManager.GUEST_UID) return
+        val now = System.currentTimeMillis()
+
+        val visibleBusinessDeletedAt = client.postgrest.from("businesses").select().decodeList<JsonObject>()
+            .associate { it.str("id") to it.longOrNull("deleted_at") }
+        val visibleBusinessIds = visibleBusinessDeletedAt.keys
+        val localBusinesses = businessDao.getAllVisible(myUid)
+        for (biz in localBusinesses) {
+            if (biz.ownerUid == myUid) continue
+            if (biz.id !in visibleBusinessIds) businessDao.markAccessLost(biz.id, now)
+        }
+        for (biz in businessDao.getAllTombstonedNotOwned(myUid)) {
+            if (visibleBusinessDeletedAt.containsKey(biz.id) && visibleBusinessDeletedAt[biz.id] == null) {
+                businessDao.clearAccessLost(biz.id)
+            }
+        }
+
+        val visibleBookDeletedAt = client.postgrest.from("books").select().decodeList<JsonObject>()
+            .associate { it.str("id") to it.longOrNull("deleted_at") }
+        val visibleBookIds = visibleBookDeletedAt.keys
+        val stillAccessibleBusinessIds = localBusinesses.map { it.id }.filter { it in visibleBusinessIds }
+        if (stillAccessibleBusinessIds.isNotEmpty()) {
+            val localBooks = bookDao.getAllForBusinesses(stillAccessibleBusinessIds)
+            for (book in localBooks) {
+                if (book.ownerUid == myUid) continue
+                if (book.id !in visibleBookIds) bookDao.markAccessLost(book.id, now)
+            }
+        }
+        for (book in bookDao.getAllTombstonedNotOwned(myUid)) {
+            if (visibleBookDeletedAt.containsKey(book.id) && visibleBookDeletedAt[book.id] == null) {
+                bookDao.clearAccessLost(book.id)
+            }
+        }
     }
 
     private fun winner(local: SyncEnvelope?, remoteUpdatedAt: Long, remoteDeviceId: String?) =
@@ -123,17 +199,18 @@ class RemotePull @Inject constructor(
         )
     }
 
-    private suspend fun pullTable(type: String, table: String, apply: suspend (JsonObject) -> Unit) {
+    /** [cursorColumn]: audit_log's timestamp column is `at`, not `updated_at` (spec P8 reuse). */
+    private suspend fun pullTable(type: String, table: String, cursorColumn: String = "updated_at", apply: suspend (JsonObject) -> Unit) {
         val client = holder.client ?: return
         val cursor = prefs.lastPulledAt(type)
         val rows = client.postgrest.from(table).select {
-            filter { gt("updated_at", Instant.ofEpochMilli(cursor).toString()) }
-            order("updated_at", Order.ASCENDING)
+            filter { gt(cursorColumn, Instant.ofEpochMilli(cursor).toString()) }
+            order(cursorColumn, Order.ASCENDING)
         }.decodeList<JsonObject>()
         var maxSeen = cursor
         for (row in rows) {
             apply(row)
-            val ts = parseTimestamp(row.str("updated_at"))
+            val ts = parseTimestamp(row.str(cursorColumn))
             if (ts > maxSeen) maxSeen = ts
         }
         if (rows.isNotEmpty()) prefs.setLastPulledAt(type, maxSeen)
@@ -146,6 +223,7 @@ class RemotePull @Inject constructor(
         const val TYPE_TRANSACTION = "TRANSACTION_PULL"
         const val TYPE_BUSINESS_MEMBER = "BUSINESS_MEMBER_PULL"
         const val TYPE_BOOK_GRANT = "BOOK_GRANT_PULL"
+        const val TYPE_HISTORY = "HISTORY_PULL"
     }
 }
 
@@ -223,6 +301,18 @@ private fun JsonObject.toBusinessMemberEntity(updatedAt: Long) = BusinessMemberE
     invitedByUid = strOrNull("invited_by_uid"),
     joinedAt = parseTimestamp(str("joined_at")),
     updatedAt = updatedAt,
+)
+
+private fun JsonObject.toHistoryEntity(at: Long) = HistoryEntity(
+    id = str("id"),
+    entityType = str("entity_type"),
+    entityId = str("entity_id"),
+    bookId = str("book_id"),
+    action = str("action"),
+    changes = strOrNull("changes"),
+    actorUid = str("actor_uid"),
+    deviceId = strOrNull("device_id") ?: "",
+    at = at,
 )
 
 private fun JsonObject.toBookGrantEntity(updatedAt: Long) = BookGrantEntity(

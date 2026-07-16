@@ -1,15 +1,18 @@
 package com.elegen.elegencashbook
 
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
+import android.widget.CheckBox
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.PopupWindow
 import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -82,7 +85,7 @@ class MembersActivity : AppCompatActivity() {
             row.findViewById<TextView>(R.id.member_row_role).text = member.roleLabel.uppercase()
             val menuButton = row.findViewById<ImageButton>(R.id.member_row_menu)
             menuButton.visibility = if (state.canManage && !member.isRevoked) View.VISIBLE else View.GONE
-            menuButton.setOnClickListener { showMemberActionSheet(member) }
+            menuButton.setOnClickListener { showMemberActionSheet(member, menuButton) }
             container.addView(row)
         }
 
@@ -105,6 +108,24 @@ class MembersActivity : AppCompatActivity() {
         val contactInput = view.findViewById<TextInputEditText>(R.id.invite_contact_input)
         val roleGroup = view.findViewById<RadioGroup>(R.id.invite_role_group)
         val submitButton = view.findViewById<MaterialButton>(R.id.invite_submit_button)
+        val allBooksCheckbox = view.findViewById<CheckBox>(R.id.invite_all_books_checkbox)
+        val booksScroll = view.findViewById<View>(R.id.invite_books_scroll)
+        val booksList = view.findViewById<LinearLayout>(R.id.invite_books_list)
+
+        val books = viewModel.state.value.books
+        booksList.removeAllViews()
+        val bookCheckboxes = books.map { book ->
+            CheckBox(this).apply {
+                text = book.name
+                tag = book.id
+                setTextColor(ContextCompat.getColor(this@MembersActivity, R.color.text_dark))
+                textSize = 13f
+                buttonTintList = ContextCompat.getColorStateList(this@MembersActivity, R.color.brand)
+            }.also { booksList.addView(it) }
+        }
+        allBooksCheckbox.setOnCheckedChangeListener { _, checked ->
+            booksScroll.visibility = if (checked) View.GONE else View.VISIBLE
+        }
 
         view.findViewById<ImageButton>(R.id.close_invite_sheet).setOnClickListener { dialog.dismiss() }
         submitButton.setOnClickListener {
@@ -114,25 +135,45 @@ class MembersActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
             val role = if (roleGroup.checkedRadioButtonId == R.id.invite_role_viewer) BusinessRole.VIEWER else BusinessRole.ADMIN
-            viewModel.onEvent(MembersUiEvent.Invite(contact, role))
+            val bookIds = if (allBooksCheckbox.isChecked) {
+                null
+            } else {
+                bookCheckboxes.filter { it.isChecked }.map { it.tag as String }.also {
+                    if (it.isEmpty()) {
+                        Toast.makeText(this, "Select at least one book, or check \"All books\"", Toast.LENGTH_SHORT).show()
+                        return@setOnClickListener
+                    }
+                }
+            }
+            viewModel.onEvent(MembersUiEvent.Invite(contact, role, bookIds))
             dialog.dismiss()
         }
         dialog.show()
     }
 
-    private fun showMemberActionSheet(member: MemberItem) {
+    private fun showMemberActionSheet(member: MemberItem, anchor: View) {
         val promote = member.role == BusinessRole.VIEWER
-        val items = arrayOf(if (promote) "Make Admin" else "Make Viewer", "Remove from business")
-        AlertDialog.Builder(this)
-            .setTitle(member.emailOrName)
-            .setItems(items) { _, which ->
-                when (which) {
-                    0 -> viewModel.onEvent(
-                        MembersUiEvent.ChangeRole(member.userUid, if (promote) BusinessRole.ADMIN else BusinessRole.VIEWER)
-                    )
-                    1 -> viewModel.onEvent(MembersUiEvent.Revoke(member.userUid))
-                }
-            }
-            .show()
+        val popupWidthPx = (200 * resources.displayMetrics.density).toInt()
+        val popupView = LayoutInflater.from(this).inflate(R.layout.popup_member_menu, null)
+        val popupWindow = PopupWindow(popupView, popupWidthPx, ViewGroup.LayoutParams.WRAP_CONTENT, true).apply {
+            isOutsideTouchable = true
+            isClippingEnabled = true
+            setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        }
+
+        popupView.findViewById<TextView>(R.id.action_change_role_text).text = if (promote) "Make Admin" else "Make Viewer"
+        popupView.findViewById<View>(R.id.action_change_role).setOnClickListener {
+            popupWindow.dismiss()
+            viewModel.onEvent(
+                MembersUiEvent.ChangeRole(member.userUid, if (promote) BusinessRole.ADMIN else BusinessRole.VIEWER)
+            )
+        }
+        popupView.findViewById<View>(R.id.action_remove_member).setOnClickListener {
+            popupWindow.dismiss()
+            viewModel.onEvent(MembersUiEvent.Revoke(member.userUid))
+        }
+
+        val xOffset = anchor.width - popupWidthPx
+        popupWindow.showAsDropDown(anchor, xOffset, 4)
     }
 }

@@ -186,7 +186,7 @@
 - [ ] A invites C as VIEWER with book Y denied → C sees all books except Y, read-only everywhere — not yet run as an explicit test.
 - [ ] B adds entry → appears on A (Realtime while foreground; worker pull when backgrounded) — not yet confirmed for latency.
 - [x] Invite unknown email → "must register first" — implemented, pgTAP-covered.
-- [ ] **Revoke B → B loses access on next sync; B's local copy of A's data cleaned.** Known gap, NOT built: sync pulls are additive-only, nothing currently removes a locally-cached row once access is revoked/corrected server-side — a device that already pulled it keeps showing it until a full resync (sign-out-and-remove-data + relogin). Needs a dedicated fix if this ships.
+- [x] **Revoke B → B loses access on next sync; B's local copy of A's data cleaned.** Was a known gap (sync pulls are additive-only, no signal for "you lost access"); fixed 2026-07-13 via `RemotePull.reconcileLostAccess()` — a full-visible-set comparison pass run at the end of every pull that locally tombstones (`markAccessLost`, local-only, never pushed) any cached business/book the server no longer returns, skipping anything the identity actually owns. Not yet re-verified on two real devices post-fix.
 - [ ] Demote last owner → rejected with message — implemented + pgTAP-covered, not re-confirmed on a real device this pass.
 - [ ] **Regression:** P0–P6 proofs pass (esp. offline single-user flows) — not formally re-run end-to-end this session.
 
@@ -211,6 +211,18 @@
 - [ ] Force a sync failure (bad row) → appears in dead-letter screen → manual retry succeeds after fix.
 - [ ] Monthly summary numbers = hand-computed from entries (paisa-exact).
 - [ ] **Full regression: every prior Proof Gate re-run end-to-end.**
+
+---
+
+## Phase 7.5 — On-device feedback round (2026-07-14)
+
+Six issues reported from real usage on `feature/p6-rbac`, all fixed same session:
+
+- [x] History (book + entry edit trail) never left the device that made it — no server table, no push/pull. Root cause, not a permission bug: a VIEWER on a different device saw nothing because the row itself never existed on their device. Fixed by reusing `audit_log` (P6) as history's remote store — 2 new columns (`changes`, `device_id`) + an insert policy gated on `BOOK_VIEW` (migration `20260714000001_p8_history_sync.sql`), `RemotePush`/`RemotePull` wired (`HISTORY` outbox tier, `pullTable` generalized to a configurable cursor column since audit_log's timestamp column is `at` not `updated_at`). pgTAP 30/30 green (added section 15). **Follow-up (same day):** owner/admin each still only saw their own event post-fix — pre-existing `history_log` rows (created before the device ran this code) had no outbox row, same class as the P4 backfill gap. Fixed via `MIGRATION_5_6` (DB v5→v6), backfilling `sync_queue` from existing `history_log` rows. Not yet re-verified on two real devices.
+- [x] "Sync in progress…" / "Sync complete" toast on app open — `MainViewModel` now combines `ObservePullActive()` (already existed, built for pull-to-refresh) and `MainActivity.render()` toasts on the true→false transition.
+- [x] Member action menu (Make Admin/Viewer, Remove) was a stock `AlertDialog.setItems` — didn't match the app's own popup-card style. Replaced with a themed `PopupWindow` (`popup_member_menu.xml`), same pattern as the book's `⋮` menu.
+- [x] Business Settings: removed dead "Change Primary Admin" row (was `Toast("Coming soon")`, no such feature exists). "Business Profile" now opens a rename sheet (`BusinessSettingsViewModel.rename`); "Delete Business" soft-deletes with a confirm dialog (`BusinessRepository.softDelete`, `BUSINESS_DELETE`-gated). Both new to `BusinessRepository`.
+- [x] Settings: removed "Move Book Requests" (dead "Coming soon" row, no such feature) and "Business Team" (duplicated Business Settings → Members, which already works).
 
 ---
 

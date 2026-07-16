@@ -36,6 +36,19 @@ class CreateBusiness @Inject constructor(private val repo: BusinessRepository) {
     }
 }
 
+class RenameBusiness @Inject constructor(private val repo: BusinessRepository) {
+    suspend operator fun invoke(businessId: String, name: String) {
+        val trimmed = name.trim()
+        require(trimmed.isNotBlank()) { "Business name required" }
+        require(trimmed.length <= MAX_NAME_LENGTH) { "Business name too long" }
+        repo.rename(businessId, trimmed)
+    }
+}
+
+class DeleteBusiness @Inject constructor(private val repo: BusinessRepository) {
+    suspend operator fun invoke(businessId: String) = repo.softDelete(businessId)
+}
+
 class ListMyBusinesses @Inject constructor(private val repo: BusinessRepository) {
     operator fun invoke(): Flow<List<BusinessOverview>> = repo.observeBusinesses()
 }

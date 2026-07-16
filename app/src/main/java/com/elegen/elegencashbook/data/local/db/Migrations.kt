@@ -76,6 +76,29 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
  * MIGRATION_2_3 (nothing local ever originates a row here; the first pull after upgrade populates
  * both from scratch).
  */
+/**
+ * v5 → v6 (P8): backfill, same reasoning as [MIGRATION_2_3]. `history_log` rows written before
+ * this device ever ran history-sync-aware code (this session's builds, pre-audit_log-push) have no
+ * outbox row and would otherwise never leave the device — real bug found on-device: owner and a
+ * shared admin each only ever saw their OWN locally-made history entries (CREATED vs RENAMED),
+ * neither synced to the other, because `logHistory()` didn't queue an outbox row until this
+ * feature's client wiring landed. One-time INSERT OR IGNORE queues every existing local history
+ * row as a CREATE (idempotencyKey `id:1`, matching [OutboxWriter]'s scheme for history rows —
+ * version is always 1, history rows are never updated in place). Idempotent; no-op on a fresh
+ * install (empty history_log).
+ */
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            INSERT OR IGNORE INTO sync_queue
+              (idempotencyKey, entityType, entityId, operation, payloadVersion, retryCount, maxRetry, lastAttempt, status)
+            SELECT id || ':1', 'HISTORY', id, 'CREATE', 1, 0, 5, NULL, 'PENDING' FROM history_log
+            """
+        )
+    }
+}
+
 val MIGRATION_4_5 = object : Migration(4, 5) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL(

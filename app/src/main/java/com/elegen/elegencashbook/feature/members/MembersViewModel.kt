@@ -8,6 +8,7 @@ import com.elegen.elegencashbook.domain.model.BusinessMember
 import com.elegen.elegencashbook.domain.model.MembershipStatus
 import com.elegen.elegencashbook.domain.model.SessionState
 import com.elegen.elegencashbook.domain.usecase.InviteToBusiness
+import com.elegen.elegencashbook.domain.usecase.ListBooks
 import com.elegen.elegencashbook.domain.usecase.ListBusinessMembers
 import com.elegen.elegencashbook.domain.usecase.ObserveSession
 import com.elegen.elegencashbook.domain.usecase.RevokeMember
@@ -30,8 +31,12 @@ data class MemberItem(
     val isRevoked: Boolean,
 )
 
+data class InviteBookOption(val id: String, val name: String)
+
 data class MembersUiState(
     val members: List<MemberItem> = emptyList(),
+    /** This business's books, for the invite sheet's "which books" picker. */
+    val books: List<InviteBookOption> = emptyList(),
     /** OWNER or ADMIN — UX-gating only, mirrors MEMBER_MANAGE (spec §8.3); server re-checks on every RPC. */
     val canManage: Boolean = false,
     val loading: Boolean = true,
@@ -39,7 +44,8 @@ data class MembersUiState(
 )
 
 sealed interface MembersUiEvent {
-    data class Invite(val emailOrPhone: String, val role: BusinessRole) : MembersUiEvent
+    /** [bookIds] null = full access to every book in the business; empty/non-null = scoped to just those. */
+    data class Invite(val emailOrPhone: String, val role: BusinessRole, val bookIds: List<String>? = null) : MembersUiEvent
     data class ChangeRole(val targetUid: String, val role: BusinessRole) : MembersUiEvent
     data class Revoke(val targetUid: String) : MembersUiEvent
     data object ErrorShown : MembersUiEvent
@@ -49,6 +55,7 @@ sealed interface MembersUiEvent {
 class MembersViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val listBusinessMembers: ListBusinessMembers,
+    private val listBooks: ListBooks,
     private val inviteToBusiness: InviteToBusiness,
     private val updateMemberRole: UpdateMemberRole,
     private val revokeMember: RevokeMember,
@@ -66,18 +73,37 @@ class MembersViewModel @Inject constructor(
 
     fun onEvent(event: MembersUiEvent) {
         when (event) {
-            is MembersUiEvent.Invite -> runRpc { inviteToBusiness(businessId, event.emailOrPhone, event.role) }
+            is MembersUiEvent.Invite -> runRpc(retryOnBookNotFound = event.bookIds != null) {
+                inviteToBusiness(businessId, event.emailOrPhone, event.role, event.bookIds)
+            }
             is MembersUiEvent.ChangeRole -> runRpc { updateMemberRole(businessId, event.targetUid, event.role) }
             is MembersUiEvent.Revoke -> runRpc { revokeMember(businessId, event.targetUid) }
             MembersUiEvent.ErrorShown -> _state.update { it.copy(errorMessage = null) }
         }
     }
 
-    private fun runRpc(block: suspend () -> Unit) {
+    /**
+     * [retryOnBookNotFound]: inviting with a book scope can hit `invite_to_business`'s
+     * BOOK_NOT_FOUND if a picked book's own CREATE outbox row hasn't pushed yet — same mirror-lag
+     * class as [load]'s retry, but for a book referenced by id rather than the caller's own
+     * membership row. Real bug found on-device: inviting with 1 of 2 books selected threw a raw
+     * FK-violation-turned-"Action failed" error (server-side gap fixed in
+     * `20260714000002_p8_fix_invite_book_scope_fk.sql`; this is the client-side retry half).
+     */
+    private fun runRpc(retryOnBookNotFound: Boolean = false, block: suspend () -> Unit) {
         viewModelScope.launch {
-            runCatching { block() }
-                .onSuccess { load() }
-                .onFailure { e -> _state.update { it.copy(errorMessage = e.message) } }
+            var attempt = 0
+            while (true) {
+                attempt++
+                val result = runCatching { block() }
+                val error = result.exceptionOrNull()
+                if (error != null && retryOnBookNotFound && error.message == "Book not found" && attempt < MAX_LOAD_ATTEMPTS) {
+                    delay(RETRY_DELAY_MS * attempt)
+                    continue
+                }
+                result.onSuccess { load() }.onFailure { e -> _state.update { it.copy(errorMessage = e.message) } }
+                break
+            }
         }
     }
 
@@ -99,10 +125,10 @@ class MembersViewModel @Inject constructor(
                     // a cold start) — comparing against a null uid would waste a whole retry.
                     val session = observeSession().first { it !is SessionState.Loading }
                     val myUid = (session as? SessionState.LoggedIn)?.user?.id
-                    myUid to listBusinessMembers(businessId)
+                    Triple(myUid, listBusinessMembers(businessId), listBooks(businessId).first())
                 }
                 attempt++
-                val (myUid, members) = outcome.getOrNull() ?: (null to null)
+                val (myUid, members, books) = outcome.getOrNull() ?: Triple(null, null, null)
                 val amMember = members?.any { it.userUid == myUid } == true
                 if (amMember || attempt >= MAX_LOAD_ATTEMPTS) {
                     if (members != null) {
@@ -110,6 +136,7 @@ class MembersViewModel @Inject constructor(
                         _state.update {
                             it.copy(
                                 members = members.map { m -> m.toItem() },
+                                books = books.orEmpty().map { InviteBookOption(it.book.id, it.book.name) },
                                 canManage = myRole == BusinessRole.OWNER || myRole == BusinessRole.ADMIN,
                                 loading = false,
                             )

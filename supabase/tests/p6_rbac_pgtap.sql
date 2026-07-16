@@ -15,7 +15,7 @@ create extension if not exists pgtap;
 
 begin;
 
-select plan(27);
+select plan(34);
 
 create temporary table pgtap_log (id serial primary key, line text);
 grant insert on pgtap_log to authenticated;
@@ -264,6 +264,76 @@ insert into pgtap_log(line) select is((select count(*) from public.books where i
 -- VIEWER role-default branch -- not just book_a. Fixed (migration 20260712000006) by generalizing
 -- the scoping check to any role.
 insert into pgtap_log(line) select is((select count(*) from public.books where id = fx('book_b'))::int, 0, 'scoped VIEWER from share_book cannot see the business''s OTHER book (not allow-listed)');
+
+reset role;
+
+-- ══════ 15. audit_log reused as history_log's remote store (P8) — gated the same as BOOK_VIEW ══
+-- Edit-history rows never left the device that made them (no server table, no push/pull) — a
+-- viewer on a different device saw nothing. Fixed by reusing audit_log (same RLS shape already
+-- needed: book_id -> BOOK_VIEW) instead of a new table.
+select fx_login(fx('viewer'));
+insert into pgtap_log(line) select lives_ok(
+  format($$insert into public.audit_log (book_id, actor_uid, action, entity_type, entity_id, changes, device_id) values (%L, %L, 'RENAMED', 'BOOK', %L, 'name=Old->New', 'dev1')$$, fx('book_a'), fx('viewer'), fx('book_a')),
+  'viewer with BOOK_VIEW on book_a can insert a history row for it'
+);
+
+reset role;
+
+select fx_login(fx('stranger'));
+insert into pgtap_log(line) select throws_ok(
+  format($$insert into public.audit_log (book_id, actor_uid, action, entity_type, entity_id) values (%L, %L, 'RENAMED', 'BOOK', %L)$$, fx('book_b'), fx('stranger'), fx('book_b')),
+  '42501', null, 'stranger without BOOK_VIEW on book_b cannot insert a history row for it'
+);
+
+reset role;
+
+select fx_login(fx('admin_unscoped'));
+insert into pgtap_log(line) select is((select count(*) from public.audit_log where book_id = fx('book_a') and action = 'RENAMED')::int, 1, 'co-member with BOOK_VIEW on book_a can read the history row viewer inserted');
+
+reset role;
+
+-- ══════ 16. invite_to_business book_scope validates the book id, no raw FK crash (regression) ══
+-- Real bug found on-device: inviting with a book_scope entry that doesn't exist server-side yet
+-- (client picked a just-created book before its own CREATE outbox row pushed) crashed with a raw
+-- Postgres FK violation (23503) instead of a clean, client-mapped error. Fixed (migration
+-- 20260714000002) by validating each book id exists (and belongs to this business) before the
+-- book_grants insert, raising BOOK_NOT_FOUND (P0001, same as share_book) instead.
+select fx_login(fx('owner'));
+insert into pgtap_log(line) select throws_ok(
+  format(
+    $$select public.invite_to_business(%L, 'stranger@test.local', 'VIEWER', array[%L]::uuid[])$$,
+    fx('biz'), '00000000-0000-0000-0000-000000000000'
+  ),
+  'P0001', 'BOOK_NOT_FOUND', 'invite_to_business with a nonexistent book_scope id raises BOOK_NOT_FOUND, not a raw FK crash'
+);
+insert into pgtap_log(line) select lives_ok(
+  format(
+    $$select public.invite_to_business(%L, 'stranger@test.local', 'VIEWER', array[%L]::uuid[])$$,
+    fx('biz'), fx('book_a')
+  ),
+  'invite_to_business with a real book_scope id still succeeds'
+);
+
+reset role;
+
+-- ══════ 17. share_book reactivates a REVOKED member instead of leaving them stuck (regression) ══
+-- Real bug found on-device: re-sharing a book with a previously-revoked business member reported
+-- success but the recipient still saw nothing, because share_book's membership upsert was
+-- `on conflict do nothing` -- a REVOKED row was never flipped back to ACTIVE, and effective_perms()
+-- requires ACTIVE before it even looks at book_grants. Fixed (migration
+-- 20260714000003) to `do update set status = 'ACTIVE'` — role/book_scoped untouched, so a revoked
+-- unscoped ADMIN comes back as an unscoped ADMIN, not downgraded.
+select fx_login(fx('owner'));
+select public.revoke_member(fx('biz'), fx('stranger'));
+insert into pgtap_log(line) select is(
+  (select status from public.business_members where business_id = fx('biz') and user_uid = fx('stranger')),
+  'REVOKED', 'stranger is revoked before re-share'
+);
+select public.share_book(fx('book_a'), 'stranger@test.local', array['BOOK_VIEW']);
+insert into pgtap_log(line) select is(
+  (select status from public.business_members where business_id = fx('biz') and user_uid = fx('stranger')),
+  'ACTIVE', 'share_book reactivates the revoked member'
+);
 
 reset role;
 

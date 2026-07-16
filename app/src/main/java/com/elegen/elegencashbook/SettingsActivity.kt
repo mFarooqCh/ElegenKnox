@@ -56,8 +56,6 @@ class SettingsActivity : AppCompatActivity() {
             }
         }
 
-        findViewById<LinearLayout>(R.id.row_business_team).setOnClickListener { comingSoon() }
-        findViewById<LinearLayout>(R.id.row_move_requests).setOnClickListener { comingSoon() }
         findViewById<LinearLayout>(R.id.row_business_settings).setOnClickListener {
             val business = uiState.activeBusiness
             if (business == null) {
@@ -90,10 +88,6 @@ class SettingsActivity : AppCompatActivity() {
         uiState = state
         findViewById<TextView>(R.id.row_your_profile_subtitle).text =
             if (state.account.loggedIn) state.account.email ?: state.account.label else "Sign in to sync across devices"
-    }
-
-    private fun comingSoon() {
-        Toast.makeText(this, "Coming soon", Toast.LENGTH_SHORT).show()
     }
 
     private fun showAboutDialog() {

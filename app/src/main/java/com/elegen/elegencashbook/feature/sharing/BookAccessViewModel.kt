@@ -77,17 +77,32 @@ class BookAccessViewModel @Inject constructor(
 
     fun onEvent(event: BookAccessUiEvent) {
         when (event) {
-            is BookAccessUiEvent.Share -> runRpc { shareBook(bookId, event.emailOrPhone, event.perms) }
+            is BookAccessUiEvent.Share -> runRpc(retryOnBookNotFound = true) { shareBook(bookId, event.emailOrPhone, event.perms) }
             is BookAccessUiEvent.Revoke -> runRpc { revokeBookGrant(bookId, event.targetUid) }
             BookAccessUiEvent.ErrorShown -> _state.update { it.copy(errorMessage = null) }
         }
     }
 
-    private fun runRpc(block: suspend () -> Unit) {
+    /**
+     * [retryOnBookNotFound]: sharing a just-created book can hit `share_book`'s BOOK_NOT_FOUND
+     * before this device's own CREATE outbox row has pushed — same mirror-lag class as [load]'s
+     * retry, but here it's the book itself missing server-side, not a membership row. Real bug
+     * found on-device: "no book found" sharing from a fresh book's Book Access screen.
+     */
+    private fun runRpc(retryOnBookNotFound: Boolean = false, block: suspend () -> Unit) {
         viewModelScope.launch {
-            runCatching { block() }
-                .onSuccess { load() }
-                .onFailure { e -> _state.update { it.copy(errorMessage = e.message) } }
+            var attempt = 0
+            while (true) {
+                attempt++
+                val result = runCatching { block() }
+                val error = result.exceptionOrNull()
+                if (error != null && retryOnBookNotFound && error.message == "Book not found" && attempt < MAX_LOAD_ATTEMPTS) {
+                    delay(RETRY_DELAY_MS * attempt)
+                    continue
+                }
+                result.onSuccess { load() }.onFailure { e -> _state.update { it.copy(errorMessage = e.message) } }
+                break
+            }
         }
     }
 

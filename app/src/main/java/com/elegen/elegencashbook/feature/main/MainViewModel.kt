@@ -16,7 +16,9 @@ import com.elegen.elegencashbook.domain.usecase.ListBooks
 import com.elegen.elegencashbook.domain.usecase.ListMyBusinesses
 import com.elegen.elegencashbook.domain.usecase.MoveBook
 import com.elegen.elegencashbook.domain.usecase.ObserveActiveBusinessId
+import com.elegen.elegencashbook.domain.usecase.ObservePullActive
 import com.elegen.elegencashbook.domain.usecase.ObserveSession
+import com.elegen.elegencashbook.domain.usecase.RefreshNow
 import com.elegen.elegencashbook.domain.usecase.RenameBook
 import com.elegen.elegencashbook.domain.usecase.RestoreBook
 import com.elegen.elegencashbook.domain.usecase.SignOut
@@ -83,6 +85,8 @@ data class MainUiState(
     /** First launch, no auth choice made yet, server configured → UI shows the login screen once. */
     val promptLogin: Boolean = false,
     val errorMessage: String? = null,
+    /** Drives the "Sync in progress…" / "Sync complete" toast on app open (spec: cold-launch first pull). */
+    val isSyncing: Boolean = false,
 )
 
 sealed interface MainUiEvent {
@@ -98,6 +102,8 @@ sealed interface MainUiEvent {
     /** Wipes Room + prefs back to fresh install. */
     data object SignOutWipeData : MainUiEvent
     data object ErrorShown : MainUiEvent
+    /** Pull-to-refresh gesture (books list / business switcher blade). */
+    data object Refresh : MainUiEvent
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -119,6 +125,8 @@ class MainViewModel @Inject constructor(
     private val signOut: SignOut,
     private val signOutAndWipe: SignOutAndWipe,
     private val settings: SettingsRepository,
+    private val refreshNow: RefreshNow,
+    observePullActive: ObservePullActive,
 ) : ViewModel() {
 
     private val serverConfigured = authRepository.isConfigured
@@ -126,15 +134,19 @@ class MainViewModel @Inject constructor(
 
     val state: StateFlow<MainUiState> =
         combine(
-            listMyBusinesses(),
-            observeActiveBusinessId(),
-            observeSession(),
-            settings.guestModeChosen,
-            _errorMessage,
-        ) { businesses, activeId, session, guestChosen, error ->
+            listMyBusinesses(), observeActiveBusinessId(), observeSession(),
+            settings.guestModeChosen, _errorMessage, observePullActive(),
+        ) { values ->
+            @Suppress("UNCHECKED_CAST")
+            val businesses = values[0] as List<BusinessOverview>
+            val activeId = values[1] as String?
+            val session = values[2] as SessionState
+            val guestChosen = values[3] as Boolean
+            val error = values[4] as String?
+            val isSyncing = values[5] as Boolean
             // Fall back to the first business when nothing was ever selected.
             val active = businesses.find { it.business.id == activeId } ?: businesses.firstOrNull()
-            Inputs(businesses, active, session, guestChosen, error)
+            Inputs(businesses, active, session, guestChosen, error, isSyncing)
         }.flatMapLatest { inputs ->
             val booksFlow = inputs.active?.let { listBooks(it.business.id) } ?: flowOf(emptyList())
             booksFlow.map { books -> buildState(inputs, books) }
@@ -169,6 +181,7 @@ class MainViewModel @Inject constructor(
                 signOutAndWipe()
             }
             MainUiEvent.ErrorShown -> _errorMessage.value = null
+            MainUiEvent.Refresh -> refreshNow()
         }
     }
 
@@ -178,6 +191,7 @@ class MainViewModel @Inject constructor(
         val session: SessionState,
         val guestChosen: Boolean,
         val errorMessage: String?,
+        val isSyncing: Boolean,
     )
 
     private suspend fun buildState(inputs: Inputs, books: List<BookWithBalance>): MainUiState {
@@ -187,6 +201,7 @@ class MainViewModel @Inject constructor(
                 inputs.session is SessionState.Guest &&
                 !inputs.guestChosen,
             errorMessage = inputs.errorMessage,
+            isSyncing = inputs.isSyncing,
         )
     }
 

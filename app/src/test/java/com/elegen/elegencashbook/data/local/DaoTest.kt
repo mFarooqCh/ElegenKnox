@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.elegen.elegencashbook.data.local.db.AppDatabase
 import com.elegen.elegencashbook.data.local.entity.BookEntity
 import com.elegen.elegencashbook.data.local.entity.BusinessEntity
+import com.elegen.elegencashbook.data.local.entity.BusinessMemberEntity
 import com.elegen.elegencashbook.data.local.entity.SyncEnvelope
 import com.elegen.elegencashbook.data.local.entity.SyncQueueEntity
 import com.elegen.elegencashbook.data.local.entity.TransactionEntity
@@ -104,6 +105,65 @@ class DaoTest {
         assertEquals(SyncEnvelope.STATE_PENDING, claimedBook.sync.syncState)
         assertEquals(now, claimedBook.sync.updatedAt)
         assertEquals("u1", db.transactionDao().getById("g_tx")!!.createdByUid)
+    }
+
+    @Test
+    fun `getAllVisible mirrors observeWithBookCount's visibility predicate as a one-shot list`() = runBlocking {
+        db.businessDao().upsert(business("mine", owner = "u1"))
+        db.businessDao().upsert(business("shared", owner = "owner2"))
+        db.businessDao().upsert(business("stranger", owner = "u2"))
+        db.businessMemberDao().upsert(BusinessMemberEntity("m1", "shared", "u1", "VIEWER", "ACTIVE", false, null, 1L, 1L))
+
+        assertEquals(setOf("mine", "shared"), db.businessDao().getAllVisible("u1").map { it.id }.toSet())
+    }
+
+    @Test
+    fun `markAccessLost hides a business locally without touching syncState or version (revocation-sync)`() = runBlocking {
+        db.businessDao().upsert(business("biz"))
+        db.bookDao().upsert(book("bk", "biz"))
+
+        db.businessDao().markAccessLost("biz", now = 99L)
+        db.bookDao().markAccessLost("bk", now = 99L)
+
+        assertEquals(emptyList<String>(), db.businessDao().getAllVisible("u1").map { it.id })
+        assertEquals(emptyList<String>(), db.bookDao().getAllForBusinesses(listOf("biz")).map { it.id })
+        // Local-only tombstone: never mark PENDING / bump version, or the outbox would try to push
+        // this "delete" to a server that never asked for one.
+        val biz = db.businessDao().getById("biz")!!
+        assertEquals(99L, biz.sync.deletedAt)
+        assertEquals(SyncEnvelope.STATE_PENDING, biz.sync.syncState) // unchanged from the fixture's own envelope() default
+        assertEquals(1L, biz.sync.version) // unchanged
+    }
+
+    @Test
+    fun `getAllTombstonedNotOwned and clearAccessLost repair a regained-access tombstone (revocation-sync reverse)`() = runBlocking {
+        db.businessDao().upsert(business("biz", owner = "owner2"))
+        db.bookDao().upsert(book("bk", "biz", owner = "owner2"))
+        db.businessMemberDao().upsert(BusinessMemberEntity("m1", "biz", "u1", "VIEWER", "ACTIVE", false, null, 1L, 1L))
+        db.businessDao().markAccessLost("biz", now = 99L)
+        db.bookDao().markAccessLost("bk", now = 99L)
+
+        assertEquals(listOf("biz"), db.businessDao().getAllTombstonedNotOwned("u1").map { it.id })
+        assertEquals(listOf("bk"), db.bookDao().getAllTombstonedNotOwned("u1").map { it.id })
+
+        db.businessDao().clearAccessLost("biz")
+        db.bookDao().clearAccessLost("bk")
+
+        assertEquals(listOf("biz"), db.businessDao().getAllVisible("u1").map { it.id })
+        assertEquals(listOf("bk"), db.bookDao().getAllForBusinesses(listOf("biz")).map { it.id })
+        assertEquals(emptyList<String>(), db.businessDao().getAllTombstonedNotOwned("u1").map { it.id })
+    }
+
+    @Test
+    fun `getAllForBusinesses scopes to the given businesses and excludes tombstoned books`() = runBlocking {
+        db.businessDao().upsert(business("biz1"))
+        db.businessDao().upsert(business("biz2"))
+        db.bookDao().upsert(book("bk1", "biz1"))
+        db.bookDao().upsert(book("bk2", "biz1", deletedAt = 9L))
+        db.bookDao().upsert(book("bk3", "biz2"))
+
+        assertEquals(listOf("bk1"), db.bookDao().getAllForBusinesses(listOf("biz1")).map { it.id })
+        assertEquals(setOf("bk1", "bk3"), db.bookDao().getAllForBusinesses(listOf("biz1", "biz2")).map { it.id }.toSet())
     }
 
     @Test

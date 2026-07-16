@@ -88,6 +88,7 @@ class BusinessRepositoryImpl @Inject constructor(
     private val prefs: AppPreferences,
     private val identity: ActiveIdentity,
     private val outbox: OutboxWriter,
+    private val permissionRepository: PermissionRepository,
 ) : BusinessRepository {
 
     // Re-subscribes on every identity change (login/logout) so the visible set is always the
@@ -110,6 +111,31 @@ class BusinessRepositoryImpl @Inject constructor(
         return outbox.write(SyncQueueEntity.TYPE_BUSINESS, entity.id, entity.sync.version, SyncQueueEntity.OP_CREATE) {
             dao.upsert(entity)
             entity.toDomain()
+        }
+    }
+
+    /** Same reasoning as BookRepositoryImpl.requireBookCapability — real capability, not raw ownership. */
+    private suspend fun requireBusinessCapability(businessId: String, capability: Permission): BusinessEntity {
+        val business = dao.getById(businessId) ?: throw PermissionDeniedException("Business not found")
+        if (capability !in permissionRepository.effectiveBusinessCapabilities(businessId)) throw PermissionDeniedException()
+        return business
+    }
+
+    override suspend fun rename(businessId: String, name: String) {
+        val existing = requireBusinessCapability(businessId, Permission.BUSINESS_EDIT)
+        val now = System.currentTimeMillis()
+        val updated = existing.copy(name = name, sync = existing.sync.bumped(prefs.deviceId(), now))
+        outbox.write(SyncQueueEntity.TYPE_BUSINESS, updated.id, updated.sync.version, SyncQueueEntity.OP_UPDATE) {
+            dao.upsert(updated)
+        }
+    }
+
+    override suspend fun softDelete(businessId: String) {
+        val existing = requireBusinessCapability(businessId, Permission.BUSINESS_DELETE)
+        val now = System.currentTimeMillis()
+        val updated = existing.copy(sync = existing.sync.bumped(prefs.deviceId(), now, deletedAt = now))
+        outbox.write(SyncQueueEntity.TYPE_BUSINESS, updated.id, updated.sync.version, SyncQueueEntity.OP_DELETE) {
+            dao.upsert(updated)
         }
     }
 }
@@ -136,20 +162,21 @@ class BookRepositoryImpl @Inject constructor(
                 .filter { Permission.BOOK_VIEW in permissionRepository.effectivePermissions(it.book.id) }
         }
 
+    /** Must be called from inside an active [outbox] transaction — enqueues its own push row too (spec P8: history syncs cross-device via audit_log). */
     private suspend fun logHistory(bookId: String, action: String, changes: String?) {
-        historyDao.insert(
-            HistoryEntity(
-                id = UUID.randomUUID().toString(),
-                entityType = HistoryEntity.TYPE_BOOK,
-                entityId = bookId,
-                bookId = bookId,
-                action = action,
-                changes = changes,
-                actorUid = identity.current(),
-                deviceId = prefs.deviceId(),
-                at = System.currentTimeMillis(),
-            )
+        val entry = HistoryEntity(
+            id = UUID.randomUUID().toString(),
+            entityType = HistoryEntity.TYPE_BOOK,
+            entityId = bookId,
+            bookId = bookId,
+            action = action,
+            changes = changes,
+            actorUid = identity.current(),
+            deviceId = prefs.deviceId(),
+            at = System.currentTimeMillis(),
         )
+        historyDao.insert(entry)
+        outbox.enqueue(SyncQueueEntity.TYPE_HISTORY, entry.id, 1, SyncQueueEntity.OP_CREATE)
     }
 
     override suspend fun create(businessId: String, name: String): Book {
@@ -251,19 +278,19 @@ class BookRepositoryImpl @Inject constructor(
                 )
                 transactionDao.upsert(newEntry)
                 outbox.enqueue(SyncQueueEntity.TYPE_TRANSACTION, newEntry.id, newEntry.sync.version, SyncQueueEntity.OP_CREATE)
-                historyDao.insert(
-                    HistoryEntity(
-                        id = UUID.randomUUID().toString(),
-                        entityType = HistoryEntity.TYPE_TRANSACTION,
-                        entityId = newEntry.id,
-                        bookId = copy.id,
-                        action = HistoryEntity.ACTION_COPIED,
-                        changes = "copiedFrom=${entry.id}",
-                        actorUid = identity.current(),
-                        deviceId = prefs.deviceId(),
-                        at = now,
-                    )
+                val historyEntry = HistoryEntity(
+                    id = UUID.randomUUID().toString(),
+                    entityType = HistoryEntity.TYPE_TRANSACTION,
+                    entityId = newEntry.id,
+                    bookId = copy.id,
+                    action = HistoryEntity.ACTION_COPIED,
+                    changes = "copiedFrom=${entry.id}",
+                    actorUid = identity.current(),
+                    deviceId = prefs.deviceId(),
+                    at = now,
                 )
+                historyDao.insert(historyEntry)
+                outbox.enqueue(SyncQueueEntity.TYPE_HISTORY, historyEntry.id, 1, SyncQueueEntity.OP_CREATE)
             }
         }
         outbox.requestPush()
@@ -287,20 +314,21 @@ class TransactionRepositoryImpl @Inject constructor(
     override fun observeById(id: String): Flow<Transaction?> =
         dao.observeById(id).map { it?.toDomain() }
 
+    /** Must be called from inside an active [outbox] transaction — enqueues its own push row too (spec P8: history syncs cross-device via audit_log). */
     private suspend fun logHistory(entryId: String, bookId: String, action: String, changes: String?) {
-        historyDao.insert(
-            HistoryEntity(
-                id = UUID.randomUUID().toString(),
-                entityType = HistoryEntity.TYPE_TRANSACTION,
-                entityId = entryId,
-                bookId = bookId,
-                action = action,
-                changes = changes,
-                actorUid = identity.current(),
-                deviceId = prefs.deviceId(),
-                at = System.currentTimeMillis(),
-            )
+        val entry = HistoryEntity(
+            id = UUID.randomUUID().toString(),
+            entityType = HistoryEntity.TYPE_TRANSACTION,
+            entityId = entryId,
+            bookId = bookId,
+            action = action,
+            changes = changes,
+            actorUid = identity.current(),
+            deviceId = prefs.deviceId(),
+            at = System.currentTimeMillis(),
         )
+        historyDao.insert(entry)
+        outbox.enqueue(SyncQueueEntity.TYPE_HISTORY, entry.id, 1, SyncQueueEntity.OP_CREATE)
     }
 
     /** Same reasoning as BookRepositoryImpl.requireBookCapability — real capability, not raw ownership. */

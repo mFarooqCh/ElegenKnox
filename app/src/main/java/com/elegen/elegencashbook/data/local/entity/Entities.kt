@@ -105,6 +105,7 @@ data class SyncQueueEntity(
         const val TYPE_BUSINESS = "BUSINESS"
         const val TYPE_BOOK = "BOOK"
         const val TYPE_TRANSACTION = "TRANSACTION"
+        const val TYPE_HISTORY = "HISTORY"
 
         const val OP_CREATE = "CREATE"
         const val OP_UPDATE = "UPDATE"

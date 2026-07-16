@@ -27,7 +27,7 @@ import com.elegen.elegencashbook.data.local.entity.TransactionEntity
         BusinessMemberEntity::class,
         BookGrantEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {

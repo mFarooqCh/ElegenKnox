@@ -102,6 +102,42 @@
             android:buttonTint="@color/brand" />
     </RadioGroup>
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:text="Books"
+        android:textColor="@color/text_dark"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+    <CheckBox
+        android:id="@+id/invite_all_books_checkbox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:checked="true"
+        android:text="All books in this business"
+        android:textColor="@color/text_dark"
+        android:textSize="13sp"
+        android:buttonTint="@color/brand" />
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/invite_books_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:layout_marginStart="12dp"
+        android:maxHeight="180dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/invite_books_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </androidx.core.widget.NestedScrollView>
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/invite_submit_button"
         android:layout_width="match_parent"
