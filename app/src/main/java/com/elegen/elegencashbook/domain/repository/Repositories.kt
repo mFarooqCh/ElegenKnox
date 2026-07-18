@@ -182,6 +182,13 @@ interface AuthRepository {
      * @throws com.elegen.elegencashbook.domain.model.AuthException on failure or no active session.
      */
     suspend fun updatePassword(newPassword: String)
+
+    /**
+     * Signs in (or auto-provisions on first use) via a Google OIDC ID token obtained from
+     * Credential Manager. Covers both sign-up and sign-in — Supabase creates the user on first call.
+     * @throws com.elegen.elegencashbook.domain.model.AuthException on failure.
+     */
+    suspend fun signInWithGoogle(idToken: String, nonce: String)
 }
 
 /** Destructive local maintenance. Only invoked from the explicit "sign out & remove data" flow. */

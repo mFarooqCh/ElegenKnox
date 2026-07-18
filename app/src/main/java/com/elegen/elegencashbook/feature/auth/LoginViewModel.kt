@@ -8,6 +8,7 @@ import com.elegen.elegencashbook.domain.usecase.RegisterUser
 import com.elegen.elegencashbook.domain.usecase.RequestPasswordReset
 import com.elegen.elegencashbook.domain.usecase.ResetPasswordWithCode
 import com.elegen.elegencashbook.domain.usecase.SignIn
+import com.elegen.elegencashbook.domain.usecase.SignInWithGoogle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import com.elegen.elegencashbook.domain.repository.AuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,6 +43,7 @@ sealed interface LoginUiEvent {
         val phone: String,
     ) : LoginUiEvent
     data object ContinueAsGuest : LoginUiEvent
+    data class GoogleSignIn(val idToken: String, val nonce: String) : LoginUiEvent
     data class ForgotPassword(val email: String) : LoginUiEvent
     data class ResetPasswordWithCode(
         val email: String,
@@ -58,6 +60,7 @@ class LoginViewModel @Inject constructor(
     authRepository: AuthRepository,
     private val signIn: SignIn,
     private val registerUser: RegisterUser,
+    private val signInWithGoogle: SignInWithGoogle,
     private val requestPasswordReset: RequestPasswordReset,
     private val resetPasswordWithCode: ResetPasswordWithCode,
     private val settings: SettingsRepository,
@@ -78,6 +81,7 @@ class LoginViewModel @Inject constructor(
                 _state.value = _state.value.copy(done = true)
             }
             is LoginUiEvent.Submit -> submit(event)
+            is LoginUiEvent.GoogleSignIn -> googleSignIn(event)
             is LoginUiEvent.ForgotPassword -> forgotPassword(event)
             is LoginUiEvent.ResetPasswordWithCode -> submitResetWithCode(event)
             LoginUiEvent.ResetFlowDismissed -> _state.value = _state.value.copy(
@@ -117,6 +121,21 @@ class LoginViewModel @Inject constructor(
                 _state.value = _state.value.copy(resetLoading = false, done = true)
             } catch (e: AuthException) {
                 _state.value = _state.value.copy(resetLoading = false, error = e.message)
+            }
+        }
+    }
+
+    /** One flow for both sign-in and sign-up — Supabase auto-provisions the user on first Google sign-in. */
+    private fun googleSignIn(event: LoginUiEvent.GoogleSignIn) {
+        if (_state.value.loading) return
+        _state.value = _state.value.copy(loading = true, error = null, info = null)
+        viewModelScope.launch {
+            try {
+                signInWithGoogle(event.idToken, event.nonce)
+                settings.setGuestModeChosen(true)
+                _state.value = _state.value.copy(loading = false, done = true)
+            } catch (e: AuthException) {
+                _state.value = _state.value.copy(loading = false, error = e.message)
             }
         }
     }

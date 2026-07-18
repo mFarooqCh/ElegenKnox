@@ -32,14 +32,15 @@ android {
         applicationId = "com.elegen.elegencashbook"
         minSdk = 29
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 4
+        versionName = "1.1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Anon key is public by design (RLS enforces access); service_role key must NEVER appear here (spec §9).
         buildConfigField("String", "SUPABASE_URL", "\"${cfg("supabase.url", "SUPABASE_URL")}\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"${cfg("supabase.anonKey", "SUPABASE_ANON_KEY")}\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${cfg("supabase.googleWebClientId", "GOOGLE_WEB_CLIENT_ID")}\"")
     }
 
     buildFeatures {
@@ -115,6 +116,10 @@ dependencies {
     implementation(libs.supabase.realtime)
     implementation(libs.ktor.client.okhttp)
     implementation(libs.tink)
+    // Google Sign-In via Credential Manager
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.google.id)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
