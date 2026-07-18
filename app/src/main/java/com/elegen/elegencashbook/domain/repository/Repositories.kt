@@ -93,6 +93,28 @@ interface AuthRepository {
 
     /** Clears session material; local Room data is retained (spec §8.2). Never throws on network failure. */
     suspend fun signOut()
+
+    /**
+     * Sends a password-reset email carrying a 6-digit recovery code (spec: no magic-link tap,
+     * the code is entered back into the app by [resetPasswordWithCode]).
+     * @throws com.elegen.elegencashbook.domain.model.AuthException on failure.
+     */
+    suspend fun requestPasswordReset(email: String)
+
+    /**
+     * Verifies the recovery code from [requestPasswordReset]'s email (this signs the user in —
+     * verifying a recovery OTP establishes a session by design) and immediately sets the new
+     * password on that session, so the caller lands authenticated with the new password already live.
+     * @throws com.elegen.elegencashbook.domain.model.AuthException on invalid/expired code or failure.
+     */
+    suspend fun resetPasswordWithCode(email: String, code: String, newPassword: String)
+
+    /**
+     * Sets a new password on the currently active session (no separate reauth — the session
+     * itself proves identity, same as the Supabase dashboard/JS client behavior).
+     * @throws com.elegen.elegencashbook.domain.model.AuthException on failure or no active session.
+     */
+    suspend fun updatePassword(newPassword: String)
 }
 
 /** Destructive local maintenance. Only invoked from the explicit "sign out & remove data" flow. */

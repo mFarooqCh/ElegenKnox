@@ -138,6 +138,18 @@
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <TextView
+                    android:id="@+id/tv_forgot_password"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:layout_marginTop="8dp"
+                    android:background="?attr/selectableItemBackground"
+                    android:padding="4dp"
+                    android:text="Forgot password?"
+                    android:textColor="@color/brand"
+                    android:textSize="13sp" />
+
+                <TextView
                     android:id="@+id/tv_error"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
