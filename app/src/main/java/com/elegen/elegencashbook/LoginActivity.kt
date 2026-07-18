@@ -9,11 +9,14 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.credentials.exceptions.GetCredentialException
 import androidx.lifecycle.repeatOnLifecycle
 import com.elegen.elegencashbook.feature.auth.AuthMode
+import com.elegen.elegencashbook.feature.auth.GoogleSignInHelper
 import com.elegen.elegencashbook.feature.auth.LoginUiEvent
 import com.elegen.elegencashbook.feature.auth.LoginUiState
 import com.elegen.elegencashbook.feature.auth.LoginViewModel
+import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -24,6 +27,7 @@ import kotlinx.coroutines.launch
 class LoginActivity : AppCompatActivity() {
 
     private val viewModel: LoginViewModel by viewModels()
+    private val googleSignInHelper by lazy { GoogleSignInHelper(this, BuildConfig.GOOGLE_WEB_CLIENT_ID) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,6 +46,7 @@ class LoginActivity : AppCompatActivity() {
         val btnPrimary = findViewById<MaterialButton>(R.id.btn_primary)
         val btnSwitch = findViewById<MaterialButton>(R.id.btn_switch_mode)
         val btnGuest = findViewById<MaterialButton>(R.id.btn_guest)
+        val btnGoogle = findViewById<MaterialButton>(R.id.btn_google)
         val tvServerNote = findViewById<TextView>(R.id.tv_server_note)
 
         btnPrimary.setOnClickListener {
@@ -56,6 +61,18 @@ class LoginActivity : AppCompatActivity() {
         }
         btnSwitch.setOnClickListener { viewModel.onEvent(LoginUiEvent.SwitchMode) }
         btnGuest.setOnClickListener { viewModel.onEvent(LoginUiEvent.ContinueAsGuest) }
+        btnGoogle.setOnClickListener {
+            lifecycleScope.launch {
+                try {
+                    val (idToken, nonce) = googleSignInHelper.requestIdToken()
+                    viewModel.onEvent(LoginUiEvent.GoogleSignIn(idToken, nonce))
+                } catch (e: GetCredentialException) {
+                    android.widget.Toast.makeText(this@LoginActivity, "Google sign-in cancelled", android.widget.Toast.LENGTH_SHORT).show()
+                } catch (e: GoogleIdTokenParsingException) {
+                    android.widget.Toast.makeText(this@LoginActivity, "Google sign-in failed — try again", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
         tvForgotPassword.setOnClickListener { showForgotPasswordDialog(etEmail.text?.toString().orEmpty()) }
 
         fun render(state: LoginUiState) {
@@ -73,6 +90,7 @@ class LoginActivity : AppCompatActivity() {
                 else -> "Sign in"
             }
             btnPrimary.isEnabled = !state.loading && state.serverConfigured
+            btnGoogle.isEnabled = !state.loading && state.serverConfigured
             btnSwitch.text = if (registering) "Have an account? Sign in" else "New here? Create an account"
             btnSwitch.isEnabled = state.serverConfigured
             tvForgotPassword.visibility = if (registering) View.GONE else View.VISIBLE

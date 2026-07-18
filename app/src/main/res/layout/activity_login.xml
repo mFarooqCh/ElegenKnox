@@ -183,6 +183,18 @@
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_google"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="16dp"
+            android:text="Continue with Google"
+            android:textAllCaps="false"
+            android:textColor="@color/text_dark"
+            app:cornerRadius="14dp"
+            app:strokeColor="@color/unselected_gray" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_guest"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"

@@ -33,6 +33,13 @@ class RegisterUser @Inject constructor(private val repo: AuthRepository) {
     }
 }
 
+class SignInWithGoogle @Inject constructor(private val repo: AuthRepository) {
+    suspend operator fun invoke(idToken: String, nonce: String) {
+        if (idToken.isBlank()) throw AuthException("Google sign-in failed — try again")
+        repo.signInWithGoogle(idToken, nonce)
+    }
+}
+
 class SignOut @Inject constructor(private val repo: AuthRepository) {
     suspend operator fun invoke() = repo.signOut()
 }

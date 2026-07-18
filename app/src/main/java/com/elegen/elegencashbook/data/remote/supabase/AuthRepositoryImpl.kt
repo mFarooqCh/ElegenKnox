@@ -7,7 +7,9 @@ import com.elegen.elegencashbook.domain.model.SessionState
 import com.elegen.elegencashbook.domain.repository.AuthRepository
 import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.auth.providers.builtin.IDToken
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.exceptions.HttpRequestException
@@ -119,6 +121,22 @@ class AuthRepositoryImpl @Inject constructor(
         } catch (e: RestException) {
             logger.warn("Auth", "Password reset code rejected")
             throw AuthException(resetCodeMessage(e), e)
+        } catch (e: HttpRequestException) {
+            throw AuthException("Cannot reach server — check your connection", e)
+        }
+    }
+
+    override suspend fun signInWithGoogle(idToken: String, nonce: String) {
+        val client = holder.client ?: throw AuthException("Server not configured — continue as guest")
+        try {
+            client.auth.signInWith(IDToken) {
+                this.idToken = idToken
+                this.provider = Google
+                this.nonce = nonce
+            }
+        } catch (e: RestException) {
+            logger.warn("Auth", "Google sign-in rejected")
+            throw AuthException("Google sign-in failed — try again", e)
         } catch (e: HttpRequestException) {
             throw AuthException("Cannot reach server — check your connection", e)
         }
