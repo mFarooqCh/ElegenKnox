@@ -138,6 +138,18 @@
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <TextView
+                    android:id="@+id/tv_forgot_password"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:layout_marginTop="8dp"
+                    android:background="?attr/selectableItemBackground"
+                    android:padding="4dp"
+                    android:text="Forgot password?"
+                    android:textColor="@color/brand"
+                    android:textSize="13sp" />
+
+                <TextView
                     android:id="@+id/tv_error"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -169,6 +181,18 @@
                     android:textColor="@color/brand" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_google"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="16dp"
+            android:text="Continue with Google"
+            android:textAllCaps="false"
+            android:textColor="@color/text_dark"
+            app:cornerRadius="14dp"
+            app:strokeColor="@color/unselected_gray" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_guest"

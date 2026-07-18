@@ -5,8 +5,11 @@ import com.elegen.elegencashbook.domain.model.AuthException
 import com.elegen.elegencashbook.domain.model.AuthUser
 import com.elegen.elegencashbook.domain.model.SessionState
 import com.elegen.elegencashbook.domain.repository.AuthRepository
+import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.auth.providers.builtin.IDToken
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.exceptions.HttpRequestException
@@ -89,6 +92,75 @@ class AuthRepositoryImpl @Inject constructor(
             logger.warn("Auth", "Remote sign-out failed; clearing local session", e)
             client.auth.clearSession()
         }
+    }
+
+    override suspend fun requestPasswordReset(email: String) {
+        val client = holder.client ?: throw AuthException("Server not configured — continue as guest")
+        try {
+            client.auth.resetPasswordForEmail(email)
+        } catch (e: RestException) {
+            logger.warn("Auth", "Password reset request rejected")
+            throw AuthException(resetRequestMessage(e), e)
+        } catch (e: HttpRequestException) {
+            throw AuthException("Cannot reach server — check your connection", e)
+        }
+    }
+
+    private fun resetRequestMessage(e: RestException): String = when {
+        e.statusCode == 429 -> "Too many reset attempts — wait a bit and try again"
+        else -> "Couldn't send reset email — check the address and try again"
+    }
+
+    override suspend fun resetPasswordWithCode(email: String, code: String, newPassword: String) {
+        val client = holder.client ?: throw AuthException("Server not configured — continue as guest")
+        try {
+            // Verifying a recovery OTP imports a session automatically (SDK behavior) — the
+            // subsequent updateUser call runs authenticated as this user, no separate sign-in needed.
+            client.auth.verifyEmailOtp(type = OtpType.Email.RECOVERY, email = email, token = code)
+            client.auth.updateUser { password = newPassword }
+        } catch (e: RestException) {
+            logger.warn("Auth", "Password reset code rejected")
+            throw AuthException(resetCodeMessage(e), e)
+        } catch (e: HttpRequestException) {
+            throw AuthException("Cannot reach server — check your connection", e)
+        }
+    }
+
+    override suspend fun signInWithGoogle(idToken: String, nonce: String) {
+        val client = holder.client ?: throw AuthException("Server not configured — continue as guest")
+        try {
+            client.auth.signInWith(IDToken) {
+                this.idToken = idToken
+                this.provider = Google
+                this.nonce = nonce
+            }
+        } catch (e: RestException) {
+            logger.warn("Auth", "Google sign-in rejected")
+            throw AuthException("Google sign-in failed — try again", e)
+        } catch (e: HttpRequestException) {
+            throw AuthException("Cannot reach server — check your connection", e)
+        }
+    }
+
+    override suspend fun updatePassword(newPassword: String) {
+        val client = holder.client ?: throw AuthException("Server not configured — continue as guest")
+        if (client.auth.currentSessionOrNull() == null) throw AuthException("Sign in to change your password")
+        try {
+            client.auth.updateUser { password = newPassword }
+        } catch (e: RestException) {
+            logger.warn("Auth", "Password update rejected")
+            throw AuthException("Couldn't update password — try again", e)
+        } catch (e: HttpRequestException) {
+            throw AuthException("Cannot reach server — check your connection", e)
+        }
+    }
+
+    private fun resetCodeMessage(e: RestException): String = when {
+        e.statusCode == 429 -> "Too many attempts — wait a bit and try again"
+        e.message?.contains("expired", ignoreCase = true) == true -> "Code expired — request a new one"
+        e.message?.contains("invalid", ignoreCase = true) == true ||
+            e.message?.contains("token", ignoreCase = true) == true -> "Invalid code — check and try again"
+        else -> "Couldn't reset password — try again"
     }
 
     private fun signInMessage(e: RestException): String = when {
