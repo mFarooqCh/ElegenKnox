@@ -37,6 +37,29 @@ class SignOut @Inject constructor(private val repo: AuthRepository) {
     suspend operator fun invoke() = repo.signOut()
 }
 
+class RequestPasswordReset @Inject constructor(private val repo: AuthRepository) {
+    suspend operator fun invoke(email: String) {
+        val normalized = normalizeEmail(email) ?: throw AuthException("Enter a valid email")
+        repo.requestPasswordReset(normalized)
+    }
+}
+
+class ResetPasswordWithCode @Inject constructor(private val repo: AuthRepository) {
+    suspend operator fun invoke(email: String, code: String, newPassword: String) {
+        val normalized = normalizeEmail(email) ?: throw AuthException("Enter a valid email")
+        if (code.isBlank()) throw AuthException("Enter the code from your email")
+        if (newPassword.length < 6) throw AuthException("Password must be at least 6 characters")
+        repo.resetPasswordWithCode(normalized, code.trim(), newPassword)
+    }
+}
+
+class ChangePassword @Inject constructor(private val repo: AuthRepository) {
+    suspend operator fun invoke(newPassword: String) {
+        if (newPassword.length < 6) throw AuthException("Password must be at least 6 characters")
+        repo.updatePassword(newPassword)
+    }
+}
+
 class SignOutAndWipe @Inject constructor(
     private val repo: AuthRepository,
     private val maintenance: LocalDataMaintenance,
