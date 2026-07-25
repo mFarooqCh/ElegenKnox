@@ -501,6 +501,9 @@ class PermissionRepositoryImpl @Inject constructor(
         // business_members row yet (pull cycle hasn't run), but its creator is still the OWNER.
         return if (businessDao.getById(businessId)?.ownerUid == uid) BusinessRole.OWNER else null
     }
+
+    override suspend fun grantedBookIds(userUid: String, bookIds: List<String>): Set<String> =
+        if (bookIds.isEmpty()) emptySet() else bookGrantDao.allowedBookIds(userUid, bookIds).toSet()
 }
 
 @Singleton

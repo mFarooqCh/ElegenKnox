@@ -62,7 +62,7 @@ data class BalanceSummary(
 
 enum class HistoryEntityType { BOOK, TRANSACTION }
 
-enum class HistoryAction { CREATED, UPDATED, RENAMED, MOVED, COPIED, DELETED, RESTORED, CONFLICT_OVERWRITTEN }
+enum class HistoryAction { CREATED, UPDATED, RENAMED, MOVED, COPIED, DELETED, RESTORED, CONFLICT_OVERWRITTEN, SHARED, ACCESS_REVOKED }
 
 data class HistoryEntry(
     val id: String,

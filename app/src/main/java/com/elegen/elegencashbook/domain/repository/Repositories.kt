@@ -100,6 +100,9 @@ interface PermissionRepository {
      * of their own just-created business by a mirror that hasn't synced yet.
      */
     suspend fun effectiveBusinessCapabilities(businessId: String): Set<Permission>
+
+    /** Which of [bookIds] a member (by uid) has an explicit ALLOW grant on, from the local mirror — for the edit-member sheet's pre-checked books. */
+    suspend fun grantedBookIds(userUid: String, bookIds: List<String>): Set<String>
 }
 
 /**

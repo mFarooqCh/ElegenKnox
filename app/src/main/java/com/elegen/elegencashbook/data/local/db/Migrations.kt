@@ -99,6 +99,25 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
     }
 }
 
+/**
+ * v6 → v7: recover dead-lettered history. Every client history push used PostgREST `.upsert()`,
+ * which compiles to `INSERT ... ON CONFLICT DO UPDATE` — but `audit_log` grants `authenticated`
+ * INSERT only (history is append-only, never updated), so Postgres refused every push with a 42501
+ * permission error. After 5 retries each history outbox row dead-lettered, so no book/entry history
+ * ever reached the server and no shared user ever saw any. The push now uses ON CONFLICT DO NOTHING
+ * ([RemotePush]); this one-time flip requeues the already-dead-lettered HISTORY rows so the backlog
+ * drains on the next sync instead of staying stuck forever (no manual-retry UI exists yet, P8).
+ * Scoped to HISTORY: other entity types dead-letter only on genuine failures, not this bug.
+ */
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "UPDATE sync_queue SET status = 'PENDING', retryCount = 0, lastAttempt = NULL " +
+                "WHERE entityType = 'HISTORY' AND status = 'DEAD_LETTER'"
+        )
+    }
+}
+
 val MIGRATION_4_5 = object : Migration(4, 5) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL(

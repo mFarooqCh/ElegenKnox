@@ -89,10 +89,8 @@
         android:nestedScrollingEnabled="false"
         android:visibility="gone" />
 
-    </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-
+    <!-- Inside the scroll, not a sibling of the SwipeRefreshLayout: that layout expands to fill
+         and would otherwise push a sibling button off-screen (it doesn't support wrap_content). -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/add_business_button"
         style="@style/Widget.Material3.Button"
@@ -109,4 +107,8 @@
         app:iconSize="18dp"
         app:iconPadding="6dp"
         app:cornerRadius="16dp" />
+
+    </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 </LinearLayout>

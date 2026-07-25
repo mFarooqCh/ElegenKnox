@@ -7,10 +7,12 @@ import com.elegen.elegencashbook.core.permission.BusinessRole
 import com.elegen.elegencashbook.domain.model.BusinessMember
 import com.elegen.elegencashbook.domain.model.MembershipStatus
 import com.elegen.elegencashbook.domain.model.SessionState
+import com.elegen.elegencashbook.domain.usecase.GetMemberGrantedBooks
 import com.elegen.elegencashbook.domain.usecase.InviteToBusiness
 import com.elegen.elegencashbook.domain.usecase.ListBooks
 import com.elegen.elegencashbook.domain.usecase.ListBusinessMembers
 import com.elegen.elegencashbook.domain.usecase.ObserveSession
+import com.elegen.elegencashbook.domain.usecase.RevokeBookGrant
 import com.elegen.elegencashbook.domain.usecase.RevokeMember
 import com.elegen.elegencashbook.domain.usecase.UpdateMemberRole
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,9 +28,15 @@ import javax.inject.Inject
 data class MemberItem(
     val userUid: String,
     val emailOrName: String,
+    /** Raw email — the lookup key for re-invite/edit (emailOrName may be a display name). */
+    val email: String,
     val roleLabel: String,
     val role: BusinessRole,
     val isRevoked: Boolean,
+    /** false = full access to every book; true = only the [grantedBookIds] below. */
+    val bookScoped: Boolean = false,
+    /** Books this member currently holds an explicit ALLOW grant on (empty when not scoped). */
+    val grantedBookIds: Set<String> = emptySet(),
 )
 
 data class InviteBookOption(val id: String, val name: String)
@@ -46,6 +54,18 @@ data class MembersUiState(
 sealed interface MembersUiEvent {
     /** [bookIds] null = full access to every book in the business; empty/non-null = scoped to just those. */
     data class Invite(val emailOrPhone: String, val role: BusinessRole, val bookIds: List<String>? = null) : MembersUiEvent
+    /**
+     * Edit an existing member from the same sheet: re-invite (idempotent — updates role + book_scoped +
+     * adds ALLOW for [bookIds]) then revoke access to [revokedBookIds] the caller unchecked.
+     * [bookIds] null = switch to full access.
+     */
+    data class EditMember(
+        val emailOrPhone: String,
+        val targetUid: String,
+        val role: BusinessRole,
+        val bookIds: List<String>?,
+        val revokedBookIds: List<String>,
+    ) : MembersUiEvent
     data class ChangeRole(val targetUid: String, val role: BusinessRole) : MembersUiEvent
     data class Revoke(val targetUid: String) : MembersUiEvent
     data object ErrorShown : MembersUiEvent
@@ -59,6 +79,8 @@ class MembersViewModel @Inject constructor(
     private val inviteToBusiness: InviteToBusiness,
     private val updateMemberRole: UpdateMemberRole,
     private val revokeMember: RevokeMember,
+    private val revokeBookGrant: RevokeBookGrant,
+    private val getMemberGrantedBooks: GetMemberGrantedBooks,
     private val observeSession: ObserveSession,
 ) : ViewModel() {
 
@@ -75,6 +97,10 @@ class MembersViewModel @Inject constructor(
         when (event) {
             is MembersUiEvent.Invite -> runRpc(retryOnBookNotFound = event.bookIds != null) {
                 inviteToBusiness(businessId, event.emailOrPhone, event.role, event.bookIds)
+            }
+            is MembersUiEvent.EditMember -> runRpc(retryOnBookNotFound = event.bookIds != null) {
+                inviteToBusiness(businessId, event.emailOrPhone, event.role, event.bookIds)
+                event.revokedBookIds.forEach { revokeBookGrant(it, event.targetUid) }
             }
             is MembersUiEvent.ChangeRole -> runRpc { updateMemberRole(businessId, event.targetUid, event.role) }
             is MembersUiEvent.Revoke -> runRpc { revokeMember(businessId, event.targetUid) }
@@ -133,10 +159,16 @@ class MembersViewModel @Inject constructor(
                 if (amMember || attempt >= MAX_LOAD_ATTEMPTS) {
                     if (members != null) {
                         val myRole = members.firstOrNull { it.userUid == myUid && it.status == MembershipStatus.ACTIVE }?.role
+                        val bookOptions = books.orEmpty().map { InviteBookOption(it.book.id, it.book.name) }
+                        val bookIds = bookOptions.map { it.id }
+                        val items = members.map { m ->
+                            val granted = if (m.bookScoped) getMemberGrantedBooks(m.userUid, bookIds) else emptySet()
+                            m.toItem(granted)
+                        }
                         _state.update {
                             it.copy(
-                                members = members.map { m -> m.toItem() },
-                                books = books.orEmpty().map { InviteBookOption(it.book.id, it.book.name) },
+                                members = items,
+                                books = bookOptions,
                                 canManage = myRole == BusinessRole.OWNER || myRole == BusinessRole.ADMIN,
                                 loading = false,
                             )
@@ -151,12 +183,15 @@ class MembersViewModel @Inject constructor(
         }
     }
 
-    private fun BusinessMember.toItem() = MemberItem(
+    private fun BusinessMember.toItem(grantedBookIds: Set<String>) = MemberItem(
         userUid = userUid,
         emailOrName = displayName?.takeIf { it.isNotBlank() } ?: email,
+        email = email,
         roleLabel = role.name.lowercase().replaceFirstChar { it.uppercase() },
         role = role,
         isRevoked = status == MembershipStatus.REVOKED,
+        bookScoped = bookScoped,
+        grantedBookIds = grantedBookIds,
     )
 
     private companion object {

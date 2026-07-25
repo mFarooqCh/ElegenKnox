@@ -24,6 +24,8 @@ object HistoryDialog {
         HistoryAction.DELETED -> R.drawable.ic_delete
         HistoryAction.RESTORED -> R.drawable.ic_check_circle
         HistoryAction.CONFLICT_OVERWRITTEN -> R.drawable.ic_info
+        HistoryAction.SHARED -> R.drawable.ic_person_add
+        HistoryAction.ACCESS_REVOKED -> R.drawable.ic_lock
     }
 
     fun show(context: Context, title: String, items: List<HistoryItem>) {

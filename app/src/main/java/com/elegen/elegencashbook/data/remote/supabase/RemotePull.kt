@@ -142,8 +142,8 @@ class RemotePull @Inject constructor(
         if (myUid == IdentityManager.GUEST_UID) return
         val now = System.currentTimeMillis()
 
-        val visibleBusinessDeletedAt = client.postgrest.from("businesses").select().decodeList<JsonObject>()
-            .associate { it.str("id") to it.longOrNull("deleted_at") }
+        val visibleBusinessRows = client.postgrest.from("businesses").select().decodeList<JsonObject>()
+        val visibleBusinessDeletedAt = visibleBusinessRows.associate { it.str("id") to it.longOrNull("deleted_at") }
         val visibleBusinessIds = visibleBusinessDeletedAt.keys
         val localBusinesses = businessDao.getAllVisible(myUid)
         for (biz in localBusinesses) {
@@ -155,11 +155,21 @@ class RemotePull @Inject constructor(
                 businessDao.clearAccessLost(biz.id)
             }
         }
+        // Hydrate businesses I can see but never pulled: a membership grant doesn't bump the
+        // business's own updated_at, so if it predates my delta cursor the delta pull can never
+        // surface it (same gained-access gap as [markAccessLost]'s reverse case, but for a row that
+        // was never local to begin with, so there's nothing to un-tombstone).
+        for (row in visibleBusinessRows) {
+            if (businessDao.getById(row.str("id")) == null) {
+                businessDao.upsert(row.toBusinessEntity(parseTimestamp(row.str("updated_at"))))
+            }
+        }
 
-        val visibleBookDeletedAt = client.postgrest.from("books").select().decodeList<JsonObject>()
-            .associate { it.str("id") to it.longOrNull("deleted_at") }
+        val visibleBookRows = client.postgrest.from("books").select().decodeList<JsonObject>()
+        val visibleBookDeletedAt = visibleBookRows.associate { it.str("id") to it.longOrNull("deleted_at") }
         val visibleBookIds = visibleBookDeletedAt.keys
-        val stillAccessibleBusinessIds = localBusinesses.map { it.id }.filter { it in visibleBusinessIds }
+        // Re-read: a business just hydrated above must count as accessible for the book pass below.
+        val stillAccessibleBusinessIds = businessDao.getAllVisible(myUid).map { it.id }.filter { it in visibleBusinessIds }
         if (stillAccessibleBusinessIds.isNotEmpty()) {
             val localBooks = bookDao.getAllForBusinesses(stillAccessibleBusinessIds)
             for (book in localBooks) {
@@ -170,6 +180,49 @@ class RemotePull @Inject constructor(
         for (book in bookDao.getAllTombstonedNotOwned(myUid)) {
             if (visibleBookDeletedAt.containsKey(book.id) && visibleBookDeletedAt[book.id] == null) {
                 bookDao.clearAccessLost(book.id)
+            }
+        }
+        // Hydrate books (+ their transactions) I can see but never pulled — the reported bug: a
+        // VIEWER granted an *existing* book saw 0 books and no entries, because a book_grant leaves
+        // the book's and its transactions' updated_at untouched, so every one of those rows sits
+        // below my delta cursor and the delta pull skips them permanently. Transactions are pulled
+        // cursor-free, scoped to the freshly hydrated book.
+        for (row in visibleBookRows) {
+            val bookId = row.str("id")
+            if (bookDao.getById(bookId) == null) {
+                bookDao.upsert(row.toBookEntity(parseTimestamp(row.str("updated_at"))))
+                hydrateTransactions(client, bookId)
+                hydrateHistory(client, bookId)
+            }
+        }
+    }
+
+    /** Full (cursor-independent) transaction pull for a single book — used when reconcile hydrates a newly-granted book whose rows predate the delta cursor. */
+    private suspend fun hydrateTransactions(client: SupabaseClient, bookId: String) {
+        val rows = client.postgrest.from("transactions").select {
+            filter { eq("book_id", bookId) }
+        }.decodeList<JsonObject>()
+        for (t in rows) {
+            if (transactionDao.getById(t.str("id")) == null) {
+                transactionDao.upsert(t.toTransactionEntity(parseTimestamp(t.str("updated_at"))))
+            }
+        }
+    }
+
+    /**
+     * Full (cursor-independent) edit-history pull for a single book — the newly-granted book's own
+     * book/entry history rows in audit_log also predate the delta cursor, so a book/entry viewer
+     * would otherwise never see any history that happened before they were granted access. Same
+     * BOOK/TRANSACTION-only filter as the delta history pull; insert is IGNORE-on-conflict.
+     */
+    private suspend fun hydrateHistory(client: SupabaseClient, bookId: String) {
+        val rows = client.postgrest.from("audit_log").select {
+            filter { eq("book_id", bookId) }
+        }.decodeList<JsonObject>()
+        for (row in rows) {
+            val entityType = row.str("entity_type")
+            if (entityType == HistoryEntity.TYPE_BOOK || entityType == HistoryEntity.TYPE_TRANSACTION) {
+                historyDao.insert(row.toHistoryEntity(parseTimestamp(row.str("at"))))
             }
         }
     }
@@ -242,7 +295,7 @@ private fun JsonObject.bool(key: String): Boolean = getValue(key).jsonPrimitive.
 /** jsonb columns arrive already parsed as a JsonElement — re-serialize to text for Room's TEXT column. */
 private fun JsonObject.rawJsonOrNull(key: String): String? = get(key)?.takeUnless { it is JsonNull }?.toString()
 
-private fun JsonObject.toBusinessEntity(updatedAt: Long) = BusinessEntity(
+internal fun JsonObject.toBusinessEntity(updatedAt: Long) = BusinessEntity(
     id = str("id"),
     name = str("name"),
     ownerUid = str("owner_uid"),

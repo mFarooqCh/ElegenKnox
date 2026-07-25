@@ -6,6 +6,7 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import com.elegen.elegencashbook.core.common.AppScope
 import com.elegen.elegencashbook.core.logging.Logger
 import com.elegen.elegencashbook.data.local.dao.BookDao
+import com.elegen.elegencashbook.data.local.dao.BusinessDao
 import com.elegen.elegencashbook.data.local.dao.TransactionDao
 import com.elegen.elegencashbook.data.local.entity.SyncEnvelope
 import com.elegen.elegencashbook.data.sync.ConflictResolver
@@ -45,6 +46,7 @@ import javax.inject.Singleton
 @Singleton
 class RealtimeSync @Inject constructor(
     private val holder: SupabaseClientHolder,
+    private val businessDao: BusinessDao,
     private val bookDao: BookDao,
     private val transactionDao: TransactionDao,
     private val logger: Logger,
@@ -83,6 +85,10 @@ class RealtimeSync @Inject constructor(
         channel = ch
         job = appScope.launch {
             try {
+                val businessChanges = ch.postgresChangeFlow<PostgresAction>(schema = "public") {
+                    table = "businesses"
+                    filter("id", FilterOperator.EQ, businessId)
+                }
                 val bookChanges = ch.postgresChangeFlow<PostgresAction>(schema = "public") {
                     table = "books"
                     filter("business_id", FilterOperator.EQ, businessId)
@@ -94,6 +100,7 @@ class RealtimeSync @Inject constructor(
                 }
                 ch.subscribe()
                 merge(
+                    businessChanges.map { it to "businesses" },
                     bookChanges.map { it to "books" },
                     txChanges.map { it to "transactions" },
                 ).collect { (action, table) -> applyAction(action, table) }
@@ -119,6 +126,13 @@ class RealtimeSync @Inject constructor(
         val remoteUpdatedAt = parseTimestamp(record.str("updated_at"))
         val remoteDeviceId = record.strOrNull("device_id")
         when (table) {
+            "businesses" -> {
+                val id = record.str("id")
+                val local = businessDao.getById(id)
+                if (winner(local?.sync, remoteUpdatedAt, remoteDeviceId) == ConflictResolver.Winner.REMOTE) {
+                    businessDao.upsert(record.toBusinessEntity(remoteUpdatedAt))
+                }
+            }
             "books" -> {
                 val id = record.str("id")
                 val local = bookDao.getById(id)

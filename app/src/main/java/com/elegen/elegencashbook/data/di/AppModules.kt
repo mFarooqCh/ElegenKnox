@@ -27,6 +27,7 @@ import com.elegen.elegencashbook.data.local.db.MIGRATION_2_3
 import com.elegen.elegencashbook.data.local.db.MIGRATION_3_4
 import com.elegen.elegencashbook.data.local.db.MIGRATION_4_5
 import com.elegen.elegencashbook.data.local.db.MIGRATION_5_6
+import com.elegen.elegencashbook.data.local.db.MIGRATION_6_7
 import com.elegen.elegencashbook.data.repository.BookRepositoryImpl
 import com.elegen.elegencashbook.data.repository.BusinessRepositoryImpl
 import com.elegen.elegencashbook.data.repository.HistoryRepositoryImpl
@@ -71,7 +72,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
         Room.databaseBuilder(context, AppDatabase::class.java, "elegen.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .build()
 
     @Provides fun provideBusinessDao(db: AppDatabase): BusinessDao = db.businessDao()

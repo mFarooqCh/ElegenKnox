@@ -31,6 +31,8 @@ private fun actionLabel(action: HistoryAction) = when (action) {
     HistoryAction.DELETED -> "Deleted"
     HistoryAction.RESTORED -> "Restored"
     HistoryAction.CONFLICT_OVERWRITTEN -> "Overwritten by a newer edit"
+    HistoryAction.SHARED -> "Shared"
+    HistoryAction.ACCESS_REVOKED -> "Access revoked"
 }
 
 private val changesDateFmt = SimpleDateFormat("d MMM yyyy", Locale.getDefault())

@@ -265,4 +265,8 @@ interface BookGrantDao {
 
     @Query("SELECT * FROM book_grants WHERE bookId = :bookId AND deletedAt IS NULL")
     fun observeActiveGrants(bookId: String): Flow<List<BookGrantEntity>>
+
+    /** Books (within the given set) a user holds an explicit ALLOW grant on — drives the edit-member sheet's checked state. */
+    @Query("SELECT bookId FROM book_grants WHERE userUid = :userUid AND bookId IN (:bookIds) AND access = 'ALLOW' AND deletedAt IS NULL")
+    suspend fun allowedBookIds(userUid: String, bookIds: List<String>): List<String>
 }

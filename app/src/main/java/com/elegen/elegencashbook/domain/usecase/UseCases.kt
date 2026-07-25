@@ -172,6 +172,11 @@ class GetMyBusinessRole @Inject constructor(private val repo: PermissionReposito
     suspend operator fun invoke(businessId: String) = repo.myBusinessRole(businessId)
 }
 
+/** Books a member is explicitly ALLOW-granted (from the local mirror) — pre-checks the edit-member sheet. */
+class GetMemberGrantedBooks @Inject constructor(private val repo: PermissionRepository) {
+    suspend operator fun invoke(userUid: String, bookIds: List<String>): Set<String> = repo.grantedBookIds(userUid, bookIds)
+}
+
 
 /** Balance math — exact Money arithmetic; overflow throws (constitution §4). */
 class GetBalance @Inject constructor() {

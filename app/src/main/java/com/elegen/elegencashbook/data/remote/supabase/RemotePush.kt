@@ -49,10 +49,13 @@ class RemotePush @Inject constructor(
                 client.postgrest.from("transactions").upsert(e.toJson())
                 transactionDao.markSynced(e.id, e.sync.version)
             }
-            // audit_log (reused for history, spec/P8): insert-only, no envelope/markSynced — a
-            // duplicate push of the same id is just a harmless idempotent upsert.
+            // audit_log (reused for history, spec/P8): append-only, no envelope/markSynced. MUST use
+            // ignoreDuplicates (ON CONFLICT DO NOTHING) — a plain upsert compiles to ON CONFLICT DO
+            // UPDATE, which Postgres refuses without UPDATE privilege, and audit_log grants
+            // authenticated INSERT only (by design — history is immutable). Every history push was
+            // silently 403-ing before this, so no book/entry history ever reached the server.
             SyncQueueEntity.TYPE_HISTORY -> historyDao.getById(row.entityId)?.let { e ->
-                client.postgrest.from("audit_log").upsert(e.toJson())
+                client.postgrest.from("audit_log").upsert(e.toJson()) { ignoreDuplicates = true }
             }
             // Unknown type: nothing local to push; treat as done so the row is cleared.
         }

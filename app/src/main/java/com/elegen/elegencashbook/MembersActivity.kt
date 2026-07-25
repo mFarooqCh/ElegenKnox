@@ -83,9 +83,12 @@ class MembersActivity : AppCompatActivity() {
             row.findViewById<TextView>(R.id.member_row_subtitle).text =
                 if (member.isRevoked) "Access revoked" else "Business member"
             row.findViewById<TextView>(R.id.member_row_role).text = member.roleLabel.uppercase()
+            // OWNER row is not manageable — they already have everything, no menu or edit sheet.
+            val editable = state.canManage && !member.isRevoked && member.role != BusinessRole.OWNER
             val menuButton = row.findViewById<ImageButton>(R.id.member_row_menu)
-            menuButton.visibility = if (state.canManage && !member.isRevoked) View.VISIBLE else View.GONE
+            menuButton.visibility = if (editable) View.VISIBLE else View.GONE
             menuButton.setOnClickListener { showMemberActionSheet(member, menuButton) }
+            row.setOnClickListener { if (editable) showInviteSheet(member) }
             container.addView(row)
         }
 
@@ -100,7 +103,8 @@ class MembersActivity : AppCompatActivity() {
         setBackgroundColor(ContextCompat.getColor(this@MembersActivity, R.color.divider_light))
     }
 
-    private fun showInviteSheet() {
+    /** [editing] non-null reuses this sheet to edit an existing member: contact locked, role + shared books pre-filled. */
+    private fun showInviteSheet(editing: MemberItem? = null) {
         val dialog = BottomSheetDialog(this)
         val view = layoutInflater.inflate(R.layout.bottom_sheet_invite_member, null)
         dialog.setContentView(view)
@@ -118,6 +122,7 @@ class MembersActivity : AppCompatActivity() {
             CheckBox(this).apply {
                 text = book.name
                 tag = book.id
+                isChecked = editing != null && book.id in editing.grantedBookIds
                 setTextColor(ContextCompat.getColor(this@MembersActivity, R.color.text_dark))
                 textSize = 13f
                 buttonTintList = ContextCompat.getColorStateList(this@MembersActivity, R.color.brand)
@@ -127,9 +132,18 @@ class MembersActivity : AppCompatActivity() {
             booksScroll.visibility = if (checked) View.GONE else View.VISIBLE
         }
 
+        if (editing != null) {
+            contactInput.setText(editing.email)
+            contactInput.isEnabled = false
+            roleGroup.check(if (editing.role == BusinessRole.VIEWER) R.id.invite_role_viewer else R.id.invite_role_admin)
+            allBooksCheckbox.isChecked = !editing.bookScoped
+            booksScroll.visibility = if (editing.bookScoped) View.VISIBLE else View.GONE
+            submitButton.text = "SAVE CHANGES"
+        }
+
         view.findViewById<ImageButton>(R.id.close_invite_sheet).setOnClickListener { dialog.dismiss() }
         submitButton.setOnClickListener {
-            val contact = contactInput.text?.toString().orEmpty()
+            val contact = if (editing != null) editing.email else contactInput.text?.toString().orEmpty()
             if (contact.isBlank()) {
                 Toast.makeText(this, "Enter an email or phone number", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
@@ -145,7 +159,15 @@ class MembersActivity : AppCompatActivity() {
                     }
                 }
             }
-            viewModel.onEvent(MembersUiEvent.Invite(contact, role, bookIds))
+            if (editing != null) {
+                // Books unchecked since the sheet opened lose their explicit ALLOW grant (skip when
+                // switching to All books — scoping is off then, so lingering grants are moot).
+                val revoked = if (bookIds == null) emptyList()
+                    else (editing.grantedBookIds - bookIds.toSet()).toList()
+                viewModel.onEvent(MembersUiEvent.EditMember(contact, editing.userUid, role, bookIds, revoked))
+            } else {
+                viewModel.onEvent(MembersUiEvent.Invite(contact, role, bookIds))
+            }
             dialog.dismiss()
         }
         dialog.show()
